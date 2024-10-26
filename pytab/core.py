@@ -130,12 +130,7 @@ def format_gpu_arg(system_os, gpu, gpu_idx):
     if system_os.lower() == "windows":
         return gpu_idx
     if system_os.lower() == "linux":
-        if vendor == "amd":  # vaapi
-            return gpu_idx
-        if vendor == "intel":  # qsv
-            return f"/dev/dri/renderD{128+gpu_idx}"
-        else:  # cuda, ...
-            return gpu["businfo"].replace("@", "-")
+        return gpu["businfo"].replace("@", "-")
 
 
 def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
