@@ -22,6 +22,8 @@ import concurrent.futures
 import re
 import subprocess
 
+from pytab import ffmpeg_log
+
 
 def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
     # click.echo(f"{pid} |> Running FFMPEG Process: {pid}")
@@ -49,6 +51,7 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
         failure_reason = "hard_ffmpeg_failure"
 
     if 0 < retcode < 255:
+        ffmpeg_log.set_test_error(ffmpeg_stderr)
         failure_reason = "generic_ffmpeg_failure"
         for line in ffmpeg_stderr:
             if re.search(r" failed: (.*)\([0-9]+\)", ffmpeg_stderr):

@@ -26,7 +26,7 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import click
 from requests import get as reqGet
 
-from pytab import api, hwi, worker
+from pytab import api, ffmpeg_log, hwi, worker
 
 
 def match_hash(hash_dict: dict, output: bool) -> tuple:
@@ -333,6 +333,8 @@ def cli(
     click.echo("Welcome to PyTAB Cheeseburger Edition 🍔")
     click.echo()
 
+    ffmpeg_log.create_log()
+
     # Informative disclaimer text
     terminal_size = get_terminal_size((80, 20))
     terminal_width = terminal_size.columns
@@ -540,6 +542,7 @@ def cli(
         length=test_arg_count, label="Starting Benchmark..."
     ) as prog_bar:
         for file in files:  # File Benchmarking Loop
+            ffmpeg_log.set_test_header(file["name"])
             if debug_flag:
                 click.echo()
                 click.echo(f"| Current File: {file['name']}")
@@ -565,6 +568,7 @@ def cli(
                             ),
                         )
                         test_cmd = f"{ffmpeg_binary} {arguments}"
+                        ffmpeg_log.set_test_args(test_cmd)
 
                         valid, runs, result = benchmark(test_cmd, debug_flag, prog_bar)
                         if not debug_flag:
