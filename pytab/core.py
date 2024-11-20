@@ -36,10 +36,7 @@ def match_hash(hash_dict: dict, output: bool) -> tuple:
 
     if not hash_dict:
         if output:
-            click.echo(
-                "Note: "
-                + click.style("This file cannot be hash-verified!", fg="yellow")
-            )
+            click.echo("Note: " + click.style("No file hash provided!", fg="yellow"))
         return None, None
 
     for hash in hash_dict:
@@ -50,7 +47,7 @@ def match_hash(hash_dict: dict, output: bool) -> tuple:
     if output:
         click.echo(
             "Note: "
-            + click.style("This Client cannot hash-verify this file!", fg="yellow")
+            + click.style("Note: No compatible hashing method found.", fg="yellow")
         )
     return None, None
 
