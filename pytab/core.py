@@ -126,7 +126,6 @@ def unpackArchive(archive_path, target_path):
 
 
 def format_gpu_arg(system_os, gpu, gpu_idx):
-    vendor = gpu["vendor"]
     if system_os.lower() == "windows":
         return gpu_idx
     if system_os.lower() == "linux":
