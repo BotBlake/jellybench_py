@@ -2,6 +2,7 @@
 /videos/*
 /ffmpeg/*
 output.json
+ffmpeg_err_log.txt
 
 #Python Cache
 *pyc
