@@ -345,7 +345,8 @@ def cli(
         subsequent_indent=indent,
     )
     click.echo(discplaimer_text)
-    click.confirm("Confirm")
+    if not click.confirm("Confirm"):
+        exit(1)
 
     click.echo()
 
