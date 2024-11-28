@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# pytab.worker.py
+# jellybench-py.worker.py
 # A transcoding hardware benchmarking client (for Jellyfin)
 #    Copyright (C) 2024 BotBlake <B0TBlake@protonmail.com>
 #
@@ -22,7 +22,7 @@ import concurrent.futures
 import re
 import subprocess
 
-from pytab import ffmpeg_log
+from jellybench-py import ffmpeg_log
 
 
 def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,

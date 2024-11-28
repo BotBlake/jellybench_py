@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "pytab"
+name = "jellybench-py"
 version = "0.1.0"
-description = "Python Transcoding Acceleration Benchmark - Client for Jellyfin Hardware Survey"
+description = "Hardware Acceleration Benchmark - python Client for Jellyfin Hardware Survey"
 authors = ["BotBlake <B0TBlake@protonmail.com>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
@@ -26,7 +26,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-pytab = 'pytab.core:main'
+jellybench = 'jellybench-py.core:main'
 
 [tool.isort]
 profile = "black"

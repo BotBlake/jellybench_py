@@ -13,7 +13,7 @@ assignees: ''
 ### Checklist
 - [ ] Using the latest Version (branch `develop`) - old Versions aren't supported
 - [ ] Running the Script on bare metal (no VM)
-- [ ] Manually executing `python /pyTAB/hwi.py` works
+- [ ] Manually executing `python /jellybench/hwi.py` works
 - [ ] The issue occurs AFTER the Benchmark has started
 
 ### Description

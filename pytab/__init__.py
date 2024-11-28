@@ -1,4 +1,4 @@
-from pytab import core
+from jellybench-py import core
 
 
 def run():

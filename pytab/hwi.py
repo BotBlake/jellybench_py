@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# pytab.hwi.py
+# jellybench-py.hwi.py
 # A transcoding hardware benchmarking client (for Jellyfin)
 #    Copyright (C) 2024 BotBlake <B0TBlake@protonmail.com>
 #
