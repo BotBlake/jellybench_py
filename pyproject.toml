@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "jellybench-py"
+name = "jellybench_py"
 version = "0.1.0"
 description = "Hardware Acceleration Benchmark - python Client for Jellyfin Hardware Survey"
 authors = ["BotBlake <B0TBlake@protonmail.com>"]
@@ -26,7 +26,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-jellybench = 'jellybench-py.core:main'
+jellybench = 'jellybench_py.core:main'
 
 [tool.isort]
 profile = "black"

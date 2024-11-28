@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# jellybench-py.core.py
+# jellybench_py.core.py
 # A transcoding hardware benchmarking client (for Jellyfin)
 #    Copyright (C) 2024 BotBlake <B0TBlake@protonmail.com>
 #
@@ -26,7 +26,7 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import click
 from requests import get as reqGet
 
-from jellybench import api, ffmpeg_log, hwi, worker
+from jellybench_py import api, ffmpeg_log, hwi, worker
 
 
 def match_hash(hash_dict: dict, output: bool) -> tuple:
@@ -321,7 +321,7 @@ def cli(
     debug = debug_flag
 
     click.echo()
-    click.echo("Welcome to jellybench-py Cheeseburger Edition 🍔")
+    click.echo("Welcome to jellybench_py Cheeseburger Edition 🍔")
     click.echo()
 
     ffmpeg_log.create_log()

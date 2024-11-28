@@ -1,10 +1,10 @@
-# jellybench-py
+# jellybench_py
 
-jellybench-py is a benchmarking tool designed to measure the performance of hardware when handling simultaneous ffmpeg transcoding processes. This tool tests how many parallel ffmpeg transcoding processes a system can manage, providing detailed insights into hardware performance.
+jellybench_py is a benchmarking tool designed to measure the performance of hardware when handling simultaneous ffmpeg transcoding processes. This tool tests how many parallel ffmpeg transcoding processes a system can manage, providing detailed insights into hardware performance.
 
 The benchmark results can be uploaded to the central Jellyfin Hardware Survey Server, allowing users to compare their hardware's performance with other systems. This facilitates easy visualization of the results and serves as a valuable resource for Jellyfin users looking to optimize their transcoding capabilities.
 
-## [jellybench-py](https://github.com/BotBlake/jellybench-py) QuickStart Guide
+## [jellybench_py](https://github.com/BotBlake/jellybench_py) QuickStart Guide
 > [!WARNING]
 > This is an Alpha Version of the Client.
 It has not been properly tested, nor implemented for all Platforms yet!
@@ -21,23 +21,23 @@ Use at your own risk.
 
 ### Software Requirements
 
-jellybench-py is built as a python module via poetry. Therefore you need to have at least python 3.11.2 and poetry installed on your system.
+jellybench_py is built as a python module via poetry. Therefore you need to have at least python 3.11.2 and poetry installed on your system.
 poetry is installed via pipx using: `pipx install poetry`
 If you do not have pipx installed, follow the [official install guide](https://pipx.pypa.io/stable/installation/)
 
-### Installing jellybench-py
+### Installing jellybench_py
 
-1. Clone the GitHub Repository `git clone https://github.com/BotBlake/jellybench-py`
-2. Go into the jellybench-py Folder `cd jellybench-py`
+1. Clone the GitHub Repository `git clone https://github.com/BotBlake/jellybench_py`
+2. Go into the jellybench_py Folder `cd jellybench_py`
 3. Switch to the development branch `git switch develop`
 4. Open the venv shell `poetry shell`
 5. Install Dependencies `poetry install`  
 _(To exit the Shell: `exit`)_
 
 > [!IMPORTANT]
-> Since the state of the software often Changes, you might have to do some "additional steps" to ensure its running correctly. They are explained down below in the [additional Steps](https://github.com/BotBlake/jellybench-py?tab=readme-ov-file#additional-steps) section.
+> Since the state of the software often Changes, you might have to do some "additional steps" to ensure its running correctly. They are explained down below in the [additional Steps](https://github.com/BotBlake/jellybench_py?tab=readme-ov-file#additional-steps) section.
 
-### Running jellybench-py
+### Running jellybench_py
 
 1. open the poetry shell `poetry shell`
 2. run the script `jellybench`
@@ -63,7 +63,7 @@ If the files are already existing there, they will not be redownloaded.
 
 ### Additional Steps
 
-_During development jellybench-py may require you to set up specific things manually these will change over Time_
+_During development jellybench_py may require you to set up specific things manually these will change over Time_
 
 - Make sure you are on the latest version `git pull`
 - Take a Look into the "Current Issues" section
