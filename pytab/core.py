@@ -220,6 +220,19 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
         prog_bar.label = "Skipped | Workers: 00 | Last Speed: 00.00"
         return False, runs, {}
 
+# Check if the device has a Software defined Limit
+def check_driver_limit(ffmpeg_binary, gpu, gpu_idx) -> bool:
+    print("This is not implemented yet")
+    test_cmd = f"{ffmpeg_binary}"
+    limit_numbers = [4, 6, 8]
+    for number in limit_numbers:
+        worker.workMan(number, test_cmd)
+
+
+    print("Simulating actual Limited Device now:")
+    driver_limited = True
+
+    return driver_limited
 
 # Output final Results in json structure
 def output_json(data, file_path):
@@ -513,6 +526,16 @@ def cli(
     click.echo(click.style("Done", fg="green"))
     click.echo()
 
+    # check for driver limited Nvidia Card
+    limited = False
+    if "nvidia" in supported_types:
+        limited = check_driver_limit(ffmpeg_binary ,gpus[gpu_idx], gpu_idx)
+        if limited:
+            click.echo("Your NVIDIA Graphics Device was found to be driver limited.")
+            click.echo(f"Skipping all tests for {gpus[gpu_idx]["product"]}")
+            click.echo()
+            supported_types.remove("nvidia")
+            
     # Count ammount of tests required to do:
     test_arg_count = 0
     if not debug_flag:
