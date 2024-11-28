@@ -29,6 +29,7 @@ from requests import get as reqGet
 from pytab import api, ffmpeg_log, hwi, worker
 
 
+# Figure out which hashing algorythm to use
 def match_hash(hash_dict: dict, output: bool) -> tuple:
     supported_hashes = [
         "sha256",
@@ -51,7 +52,7 @@ def match_hash(hash_dict: dict, output: bool) -> tuple:
         )
     return None, None
 
-
+# sha265 checksum calculation
 def calculate_sha256(file_path: str) -> str:
     # Calculate SHA256 checksum of a file
     sha256_hash = sha256()
@@ -61,7 +62,7 @@ def calculate_sha256(file_path: str) -> str:
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
 
-
+# Check if file existing, confirm hash, (re)download 
 def obtainSource(
     target_path: str, source_url: str, hash_dict: dict, notify_on_download: bool
 ) -> tuple:
@@ -106,7 +107,7 @@ def obtainSource(
         os.remove(file_path)  # Delete file if checksum doesn't match
         return False, "Invalid Checksum!"  # Checksum invalid
 
-
+# Unpack ffmpeg archive (or others)
 def unpackArchive(archive_path, target_path):
     if os.path.exists(target_path):
         rmtree(target_path)
@@ -121,14 +122,14 @@ def unpackArchive(archive_path, target_path):
         unpack_archive(archive_path, target_path)
     click.echo(" success!")
 
-
+# Figure out how to select the GPU
 def format_gpu_arg(system_os, gpu, gpu_idx):
     if system_os.lower() == "windows":
         return gpu_idx
     if system_os.lower() == "linux":
         return gpu["businfo"].replace("@", "-")
 
-
+# Benchmark Routine for a singular ffmpeg command. 
 def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
     runs = []
     total_workers = 1
@@ -220,6 +221,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
         return False, runs, {}
 
 
+# Output final Results in json structure
 def output_json(data, file_path):
     # Create the directory if it doesn't exist
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
