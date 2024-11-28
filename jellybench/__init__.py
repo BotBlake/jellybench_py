@@ -1,4 +1,4 @@
-from jellybench-py import core
+from jellybench import core
 
 
 def run():

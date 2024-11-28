@@ -26,7 +26,7 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import click
 from requests import get as reqGet
 
-from jellybench-py import api, ffmpeg_log, hwi, worker
+from jellybench import api, ffmpeg_log, hwi, worker
 
 
 def match_hash(hash_dict: dict, output: bool) -> tuple:

@@ -22,7 +22,7 @@ import concurrent.futures
 import re
 import subprocess
 
-from jellybench-py import ffmpeg_log
+from jellybench import ffmpeg_log
 
 
 def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
