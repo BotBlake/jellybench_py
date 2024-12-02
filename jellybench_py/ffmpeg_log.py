@@ -7,7 +7,7 @@ ffmpeg_log_path = "./ffmpeg_err_log.txt"
 def create_log():
     from time import ctime
 
-    header = "pyTAB ffmpeg error log from "
+    header = "jellybench_py: ffmpeg error log from "
     time_now = ctime(1627908313.717886)
     header = f"{header}{time_now}\n"
     # Create the directory if it doesn't exist
