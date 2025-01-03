@@ -1,0 +1,116 @@
+name: Bug report
+description: Create a report to help us improve
+labels:
+  - bug
+body:
+  - type: checkboxes
+    id: issue_classification
+    attributes:
+      label: "Classifications"
+      description: Answer the following to help us determine the root cause of the issue. Check all that apply.
+      options:
+        - label: Running `python ./jellybench_py/hwi.py` manually (within the Poetry shell) works and produces correct results.
+          required: false
+        - label: This happens on a Virtual Hardware (VM, WSL, ...) # The script has a bunch of issues with hardware detection on VMs - therefore its important to know if the tester has been using a VM or not!
+          required: false
+        - label: The issue occurs during the benchmark section of the script (after `Starting Benchmark...`). 
+          required: false
+        - label: A server issue or faulty server response is causing the problem.
+          required: false
+        - label: jellybench was run in `--debug` mode (recommended for issue reports).
+          required: false
+        - label: I am using the latest version (branch `develop`) of jellybench. I understand older versions are not supported.
+          required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide a clear and concise description of the bug.
+      placeholder: jellybench fails when no GPU is selected via the CLI.
+    validations:
+      required: true
+  - type: textarea
+    id: error_code
+    attributes:
+      label: Error Code or Output
+      description: Provide any error messages or console outputs here.
+      placeholder: Paste the exact error message or code here.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Provide clear steps on how to reproduce the issue.
+      placeholder: |
+        1. Start jellybench on a system with multiple GPUs.
+        2. Do not select a GPU using the `--gpu` flag.
+        3. Select a GPU in the interactive GPU selector.
+        4. Observe the crash.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: Specify your platform. (If using a VM, specify the emulated platform.)
+      options:
+        - Please select...
+        - Windows
+        - Linux
+        - MacOS
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: System Architecture
+      description: Specify the architecture of your system. This helps diagnose issues related to compatibility.
+      options:
+        - Please select...
+        - x86 (32-bit)
+        - x86_64 (64-bit)
+        - ARM (32-bit)
+        - ARM64 (64-bit)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: py-version
+    attributes:
+      label: Python Version
+      placeholder: 3.8.5
+    validations:
+      required: true
+  - type: input
+    id: cpus
+    attributes: 
+      label: CPU[s]
+      description: Name the vendor and product name(s) of your CPU(s)
+      placeholder: Intel Core i5-12400F
+    validations:
+      required: true
+  - type: input
+    id: gpus
+    attributes: 
+      label: GPU[s]
+      description: Name the vendor and product name(s) of your GPU(s)
+      placeholder: NVIDIA 1660Ti Mobile
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Include any other relevant information about the issue.
+    validations:
+      required: false
+  - type: textarea
+    id: solutions
+    attributes:
+      label: Possible Solution
+      description: Suggest a fix or the potential cause of the issue. (Optional)
+    validations:
+      required: false
