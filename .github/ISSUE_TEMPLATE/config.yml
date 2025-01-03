@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Known Issues
+    url: https://github.com/BotBlake/jellybench_py?tab=readme-ov-file#current-issues
+    about: Check the list of known issues before submitting a bug report.
+  - name: Hardware Visualizer Server Repository
+    url: https://github.com/JPVenson/Jellyfin.HardwareVisualizer/
+    about: Visit the repository for the Jellyfin Hardware Visualizer Server.
