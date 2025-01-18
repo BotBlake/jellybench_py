@@ -72,17 +72,6 @@ _During development jellybench_py may require you to set up specific things manu
 You will find a List of currently known issues below.
 These will change over time, so please ensure you check this section regularly for any changes.
 
-### Server Specifies Incorrect Decoders
-Currently, the official HWA server is sending out faulty data. For more details and updates, check https://github.com/JPVenson/Jellyfin.HardwareVisualizer/issues/9 .  
-> [!CAUTION]  
-> Running the script with the faulty HWA server will result in long runtimes and useless output files. Proceed with caution!
-
-### Download Paths Have Changed
-The official HWA server is currently providing deprecated download URLs for the test files.  
-A temporary workaround is to manually download the files from [here](https://repo.jellyfin.org/archive/jellyfish/) and place them in the correct directory. For updates, see https://github.com/JPVenson/Jellyfin.HardwareVisualizer/issues/12 .  
-> [!NOTE]  
-> Running the script with the official server will result in a crash during the download process.
-
 ### NvEnc Driver Limitations
 NVIDIA imposes a limit on the maximum number of NvEnc streams for consumer-grade GPUs through the driver. This limitation currently leads to significantly increased runtimes on affected devices.  
 > [!CAUTION]  
