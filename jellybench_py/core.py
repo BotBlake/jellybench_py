@@ -485,9 +485,18 @@ def cli(
         ffmpeg_files = f"{ffmpeg_path}/ffmpeg_files"
         unpackArchive(ffmpeg_download[1], ffmpeg_files)
         ffmpeg_binary = f"{ffmpeg_files}/ffmpeg"
+        if system_info["os"]["id"] == "windows":
+            ffmpeg_binary = f"{ffmpeg_binary}.exe"
     else:
         ffmpeg_binary = ffmpeg_download[1]
-
+    ffmpeg_binary = os.path.abspath(ffmpeg_binary)
+    print("before")
+    print(repr(ffmpeg_binary))
+    print(ffmpeg_binary)
+    ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
+    print("after")
+    print(repr(ffmpeg_binary))
+    print(ffmpeg_binary)
     click.echo(click.style("Done", fg="green"))
     click.echo()
 
@@ -539,7 +548,8 @@ def cli(
                 click.echo()
                 click.echo(f"| Current File: {file['name']}")
             filename = os.path.basename(file["source_url"])
-            current_file = f"{video_path}/{filename}"
+            current_file = os.path.abspath(f"{video_path}/{filename}")
+            current_file = current_file.replace("\\", "\\\\")
             tests = file["data"]
             for test in tests:
                 if debug_flag:
