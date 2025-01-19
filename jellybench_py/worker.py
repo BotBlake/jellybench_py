@@ -20,6 +20,7 @@
 
 import concurrent.futures
 import re
+import shlex
 import subprocess
 
 from jellybench_py import ffmpeg_log
@@ -82,7 +83,7 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
 
 
 def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
-    ffmpeg_cmd_list = ffmpeg_cmd.split()
+    ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
     raw_worker_data = {}
     failure_reason = None
     # click.echo(f"> Run with {worker_count} Processes")
