@@ -43,7 +43,7 @@ def obtainSource(
 
         for idx, hash in enumerate(hash_dict):
             if hash["type"] in supported_hashes:
-                message = f"Note: Compatible hashing method found. Using {hash["type"]}"
+                message = f"Note: Compatible hashing method found. Using {hash['type']}"
                 return hash["type"], hash["hash"], message
         message = "Note: " + click.style(
             "No compatible hashing method found.", fg="yellow"
