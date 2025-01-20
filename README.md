@@ -25,6 +25,8 @@ jellybench_py is built as a python module via poetry. Therefore you need to have
 poetry is installed via pipx using: `pipx install poetry`
 If you do not have pipx installed, follow the [official install guide](https://pipx.pypa.io/stable/installation/)
 
+As of [Poetry 2.0.0](https://python-poetry.org/blog/announcing-poetry-2.0.0#poetry-export-and-poetry-shell-only-available-via-plugins) `poetry shell` is only available as a plugin. Therefore you will have to install the plugin as well. You will find an install guide [here](https://github.com/python-poetry/poetry-plugin-shell?tab=readme-ov-file#installation).
+
 ### Installing jellybench_py
 
 1. Clone the GitHub Repository `git clone https://github.com/BotBlake/jellybench_py`
