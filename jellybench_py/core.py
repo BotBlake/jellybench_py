@@ -348,7 +348,7 @@ def cli(
     terminal_size = get_terminal_size((80, 20))
     terminal_width = terminal_size.columns
 
-    print(click.style("Disclaimer", bold=True))
+    print(styled("Disclaimer", [Style.BOLD]))
     discplaimer_text = "Please close all background programs and plug the device into a power source if it is running on battery power before starting the benchmark."
 
     indent = "| "
@@ -366,17 +366,17 @@ def cli(
 
     if debug_flag:
         print(
-            click.style("Dev Mode", bg="magenta", fg="white")
+            styled("Dev Mode", [Style.BG_MAGENTA, Style.WHITE])
             + ": Special Features and Output enabled  "
-            + click.style("DO NOT UPLOAD RESULTS!", fg="red")
+            + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
         )
         print()
-    print(click.style("System Initialization", bold=True))
+    print(styled("System Initialization", [Style.BOLD]))
 
     if not server_url.startswith("http") and debug_flag:
         if os.path.exists(server_url):
             print(
-                click.style("|", bg="magenta", fg="white") + " Using local test-file"
+                styled("|", [Style.BG_MAGENTA, Style.WHITE]) + " Using local test-file"
             )
             platforms = "local"
             platform_id = "local"
@@ -388,7 +388,7 @@ def cli(
     else:
         if server_url != Constants.DEFAULT_SERVER_URL:
             print(
-                click.style("|", bg="magenta", fg="white")
+                styled("|", [Style.BG_MAGENTA, Style.WHITE])
                 + " Not using official Server!  "
                 + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
             )
@@ -489,7 +489,7 @@ def cli(
 
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
-    print(click.style("Loading ffmpeg", bold=True))
+    print(styled("Loading ffmpeg", [Style.BOLD]))
     print('| Searching local "ffmpeg" -', end='')
     ffmpeg_download = obtainSource(
         ffmpeg_path,
@@ -518,7 +518,7 @@ def cli(
 
     # Downloading Videos
     files = server_data["tests"]
-    print(click.style("Obtaining Test-Files:", bold=True))
+    print(styled("Obtaining Test-Files:", [Style.BOLD]))
     for file in files:
         name = os.path.basename(file["name"])
         print(f'| "{name}" - local -', end='')
