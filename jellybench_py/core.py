@@ -397,7 +397,7 @@ def cli(
         )  # obtain list of (supported) Platforms + ID's
         platform_id = hwi.get_platform_id(platforms)
 
-    print("| Obtaining System Information...")
+    print("| Obtaining System Information...", end='')
     system_info = hwi.get_system_info()
     print(" success!")
     print("| Detected System Config:")
