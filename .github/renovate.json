@@ -1,0 +1,32 @@
+{
+	"extends": [
+		"config:base",
+		":dependencyDashboard",
+		":timezone(Etc/UTC)",
+		":preserveSemverRanges"
+	],
+	"internalChecksFilter": "strict",
+	"rebaseWhen": "conflicted",
+	"packageRules": [
+		{
+			"description": "Add the ci and github-actions GitHub label to GitHub Action bump PRs",
+			"matchManagers": [
+				"github-actions"
+			],
+			"labels": [
+				"ci",
+				"github-actions"
+			]
+		},
+		{
+			"description": "Add the poetry and dependency GitHub label to poetry dependency bump PRs",
+			"matchManagers": [
+				"poetry"
+			],
+			"labels": [
+				"poetry",
+				"dependencies"
+			]
+		}
+	]
+}

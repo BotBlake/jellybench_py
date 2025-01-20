@@ -26,9 +26,10 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import click
 import requests
 
-from  jellybench_py import api, ffmpeg_log, hwi, worker
+from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
 from jellybench_py.util import styled
+
 
 def obtainSource(
     target_path: str, source_url: str, hash_dict: dict, name: str, quiet: bool
@@ -613,6 +614,7 @@ def cli(
     if output_path:
         if click.confirm("Do you want to upload your results to the server? "):
             output_json(result_data, None, server_url)
+
 
 def main():
     # function required by poetry entrypoint
