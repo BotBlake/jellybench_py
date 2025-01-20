@@ -242,19 +242,17 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
         return False, runs, {}
 
 
-def output_json(data, file_path):
-    # Create the directory if it doesn't exist
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
+def output_json(data, file_path, server_url):
     # Write the data to the JSON file
     if file_path:
+        # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as json_file:
             json.dump(data, json_file, indent=4)
         click.echo(f"Data successfully saved to {file_path}")
     else:
-        click.echo()
-        click.echo("No output file specified. Writing to stdout.")
-        click.echo(json.dumps(data, indent=4))
+        # upload to server
+        api.upload(server_url, data)
 
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], max_content_width=120)
@@ -540,15 +538,14 @@ def cli(
 
     # Count ammount of tests required to do:
     test_arg_count = 0
-    if not debug_flag:
-        for file in files:
-            tests = file["data"]
-            for test in tests:
-                commands = test["arguments"]
-                for command in commands:
-                    if command["type"] in supported_types:
-                        test_arg_count += 1
-        click.echo(f"We will do {test_arg_count} tests.")
+    for file in files:
+        tests = file["data"]
+        for test in tests:
+            commands = test["arguments"]
+            for command in commands:
+                if command["type"] in supported_types:
+                    test_arg_count += 1
+    click.echo(f"We will do {test_arg_count} tests.")
 
     if not click.confirm("Do you want to continue?"):
         click.echo("Exiting...")
@@ -611,11 +608,13 @@ def cli(
     click.echo("Benchmark Done. Writing file to Output.")
     result_data = {
         "token": server_data["token"],
-        "hwinfo": system_info,
+        "hwinfo": {"ffmpeg": ffmpeg_data, **system_info},
         "tests": benchmark_data,
     }
-    output_json(result_data, output_path)
-
+    output_json(result_data, output_path, server_url)
+    if output_path:
+        if click.confirm("Do you want to upload your results to the server? "):
+            output_json(result_data, None, server_url)
 
 def main():
     return cli(obj={})

@@ -17,7 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 ##########################################################################################
-from json import JSONDecodeError, load
+from json import JSONDecodeError, load, dumps
 
 import click
 import requests
@@ -103,3 +103,18 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
         click.echo("ERROR: No connection to Server possible")
         exit()
     return valid, test_data
+
+def upload(server_url: str, data: dict):
+    click.echo("| Uploading to Server... ", nl=False)
+    api_url = f"{server_url}/api/v1/SubmissionApi"
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.post(api_url, json=data, headers=headers)
+    try:
+        jsonresponse = response.json()
+        print(dumps(jsonresponse, indent=4))
+    except Exception as e:
+        print(e)
+        exit(1)
