@@ -11,7 +11,7 @@ python = "^3.11.2"
 requests = "^2.31.0"
 wmi = { version = "*", markers = "sys_platform == 'win32'" }
 py-cpuinfo = "^9.0.0"
-progressbar = "^2.5"
+progressbar2 = "^4.5.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.22.2"
