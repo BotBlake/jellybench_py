@@ -521,7 +521,7 @@ def cli(
     print(click.style("Obtaining Test-Files:", bold=True))
     for file in files:
         name = os.path.basename(file["name"])
-        print(f'| "{name}" - local -')
+        print(f'| "{name}" - local -', end='')
         success, output = obtainSource(
             video_path, file["source_url"], file["source_hashs"], name, quiet=True
         )
