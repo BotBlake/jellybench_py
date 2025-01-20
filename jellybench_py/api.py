@@ -17,11 +17,12 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 ##########################################################################################
-from json import JSONDecodeError, load, dumps
-from jellybench_py.constant import Style
-from jellybench_py.util import styled
+from json import JSONDecodeError, dumps, load
 
 import requests
+
+from jellybench_py.constant import Style
+from jellybench_py.util import styled
 
 
 def getPlatform(server_url: str) -> list:
@@ -103,12 +104,11 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
         exit()
     return valid, test_data
 
+
 def upload(server_url: str, data: dict):
     print("| Uploading to Server... ", end='')
     api_url = f"{server_url}/api/v1/SubmissionApi"
-    headers = {
-        'Content-Type': 'application/json'
-    }
+    headers = {"Content-Type": "application/json"}
 
     response = requests.post(api_url, json=data, headers=headers)
     try:

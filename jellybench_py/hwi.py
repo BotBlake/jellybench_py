@@ -21,7 +21,6 @@ import json
 import platform
 import subprocess
 
-import click
 import cpuinfo
 
 if platform.system() == "Windows":
