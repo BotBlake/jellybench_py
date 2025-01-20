@@ -136,7 +136,7 @@ def unpackArchive(archive_path, target_path):
         )
     os.makedirs(target_path)
 
-    print("Unpacking Archive...")
+    print("Unpacking Archive...", end='')
     if archive_path.endswith((".zip", ".tar.gz", ".tar.xz")):
         unpack_archive(archive_path, target_path)
     print(" success!")
@@ -490,7 +490,7 @@ def cli(
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
     print(click.style("Loading ffmpeg", bold=True))
-    print('| Searching local "ffmpeg" -')
+    print('| Searching local "ffmpeg" -', end='')
     ffmpeg_download = obtainSource(
         ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
