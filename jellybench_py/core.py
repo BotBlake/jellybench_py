@@ -17,6 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 ##########################################################################################
+import argparse
 import json
 import os
 import textwrap
@@ -252,91 +253,69 @@ def output_json(data, file_path, server_url):
         # upload to server
         api.upload(server_url, data)
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--ffmpeg",
+        dest="ffmpeg_path",
+        type=str,
+        default="./ffmpeg",
+        help="Path for JellyfinFFMPEG download/execution (default: ./ffmpeg)",
+    )
 
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], max_content_width=120)
+    parser.add_argument(
+        "--videos",
+        dest="video_path",
+        type=str,
+        default="./videos",
+        help="Path for download of test files (SSD required) (default: ./videos)",
+    )
 
+    parser.add_argument(
+        "--server",
+        dest="server_url",
+        type=str,
+        default=Constants.DEFAULT_SERVER_URL,
+        help=f"Server URL for test data and result submission (default: {Constants.DEFAULT_SERVER_URL})",
+    )
 
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.option(
-    "--ffmpeg",
-    "ffmpeg_path",
-    type=click.Path(
-        resolve_path=True,
-        dir_okay=True,
-        writable=True,
-        executable=True,
-    ),
-    default="./ffmpeg",
-    show_default=True,
-    required=False,
-    help="Path for JellyfinFFMPEG Download/execution",
-)
-@click.option(
-    "--videos",
-    "video_path",
-    type=click.Path(
-        resolve_path=True,
-        dir_okay=True,
-        writable=True,
-        readable=True,
-    ),
-    default="./videos",
-    show_default=True,
-    required=False,
-    help="Path for download of test files. (SSD required)",
-)
-@click.option(
-    "--server",
-    "server_url",
-    default=Constants.DEFAULT_SERVER_URL,
-    show_default=True,
-    help="Server URL for test data and result submition.",
-)
-@click.option(
-    "--output_path",
-    type=click.Path(),
-    default="./output.json",
-    show_default=True,
-    required=False,
-    help="Path to the output JSON file.",
-)
-@click.option(
-    "--gpu",
-    "gpu_input",
-    type=int,
-    required=False,
-    help="Select which gpu to use for testing",
-)
-@click.option(
-    "--nocpu",
-    "disable_cpu",
-    type=bool,
-    is_flag=True,
-    required=False,
-    default=False,
-    help="Select whether or not to use your cpu(s) for testing",
-)
-@click.option(
-    "--debug",
-    "debug_flag",
-    is_flag=True,
-    default=False,
-    help="Enable additional debug output",
-)
-def cli(
-    ffmpeg_path: str,
-    video_path: str,
-    server_url: str,
-    output_path: str,
-    gpu_input: int,
-    disable_cpu: bool,
-    debug_flag: bool,
-) -> None:
+    parser.add_argument(
+        "--output_path",
+        dest="output_path",
+        type=str,
+        default="./output.json",
+        help="Path to the output JSON file (default: ./output.json)",
+    )
+
+    parser.add_argument(
+        "--gpu",
+        dest="gpu_input",
+        type=int,
+        required=False,
+        help="Select which GPU to use for testing",
+    )
+
+    parser.add_argument(
+        "--nocpu",
+        dest="disable_cpu",
+        action="store_true",
+        help="Select whether or not to use your CPU(s) for testing",
+    )
+
+    parser.add_argument(
+        "--debug",
+        dest="debug_flag",
+        action="store_true",
+        help="Enable additional debug output",
+    )
+
+def cli() -> None:
     """
     Python Transcoding Acceleration Benchmark Client made for Jellyfin Hardware Survey
     """
+    args = parse_args()
     global debug
-    debug = debug_flag
+    debug = args.debug_flag
 
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
@@ -359,12 +338,12 @@ def cli(
         subsequent_indent=indent,
     )
     print(discplaimer_text)
-    if not click.confirm("Confirm"):
+    if input("Confirm? [Y/N]").lower() in ['yes', 'y']:
         exit(1)
 
     print()
 
-    if debug_flag:
+    if args.debug_flag:
         print(
             styled("Dev Mode", [Style.BG_MAGENTA, Style.WHITE])
             + ": Special Features and Output enabled  "
@@ -373,8 +352,8 @@ def cli(
         print()
     print(styled("System Initialization", [Style.BOLD]))
 
-    if not server_url.startswith("http") and debug_flag:
-        if os.path.exists(server_url):
+    if not args.server_url.startswith("http") and args.debug_flag:
+        if os.path.exists(args.server_url):
             print(
                 styled("|", [Style.BG_MAGENTA, Style.WHITE]) + " Using local test-file"
             )
@@ -386,14 +365,14 @@ def cli(
             input("Press any key to exit")
             exit()
     else:
-        if server_url != Constants.DEFAULT_SERVER_URL:
+        if args.server_url != Constants.DEFAULT_SERVER_URL:
             print(
                 styled("|", [Style.BG_MAGENTA, Style.WHITE])
                 + " Not using official Server!  "
                 + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
             )
         platforms = api.getPlatform(
-            server_url
+            args.server_url
         )  # obtain list of (supported) Platforms + ID's
         platform_id = hwi.get_platform_id(platforms)
 
@@ -432,7 +411,7 @@ def cli(
     supported_types = []
 
     # CPU Logic
-    if not disable_cpu:
+    if not args.disable_cpu:
         supported_types.append("cpu")
 
     # GPU Logic
@@ -448,7 +427,7 @@ def cli(
         # for i, gpu in enumerate(gpus, 1):
         #     print(f"    | {i}: {gpu['product']}, {gpu['vendor']}")
         # print()
-        gpu_input = click.prompt("Select GPU (0 to disable GPU tests)", type=int)
+        gpu_input = input("Select GPU (0 to disable GPU tests)")
         # print("   _")
         # print("  /")
         # print(" /")
@@ -472,7 +451,7 @@ def cli(
         supported_types.append(gpus[gpu_idx]["vendor"])
 
     # Error if all hardware disabled
-    if gpu_input == 0 and disable_cpu:
+    if gpu_input == 0 and args.disable_cpu:
         print()
         print("ERROR: All Hardware Disabled")
         input("Press any key to exit")
@@ -480,9 +459,9 @@ def cli(
 
     # Stop Hardware Selection logic
 
-    valid, server_data = api.getTestData(platform_id, platforms, server_url)
+    valid, server_data = api.getTestData(platform_id, platforms, args.server_url)
     if not valid:
-        print(f"Cancled: {server_data}")
+        print(f"Cancelled: {server_data}")
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
@@ -492,7 +471,7 @@ def cli(
     print(styled("Loading ffmpeg", [Style.BOLD]))
     print('| Searching local "ffmpeg" -', end='')
     ffmpeg_download = obtainSource(
-        ffmpeg_path,
+        args.ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
         ffmpeg_data["ffmpeg_hashs"],
         "ffmpeg",
@@ -504,7 +483,7 @@ def cli(
         input("Press any key to exit")
         exit()
     elif ffmpeg_download[1].endswith((".zip", ".tar.gz", ".tar.xz")):
-        ffmpeg_files = f"{ffmpeg_path}/ffmpeg_files"
+        ffmpeg_files = f"{args.ffmpeg_path}/ffmpeg_files"
         unpackArchive(ffmpeg_download[1], ffmpeg_files)
         ffmpeg_binary = f"{ffmpeg_files}/ffmpeg"
         if system_info["os"]["id"] == "windows":
@@ -523,7 +502,7 @@ def cli(
         name = os.path.basename(file["name"])
         print(f'| "{name}" - local -', end='')
         success, output = obtainSource(
-            video_path, file["source_url"], file["source_hashs"], name, quiet=True
+            args.video_path, file["source_url"], file["source_hashs"], name, quiet=True
         )
         if not success:
             print(" Error")
@@ -545,7 +524,7 @@ def cli(
                     test_arg_count += 1
     print(f"We will do {test_arg_count} tests.")
 
-    if not click.confirm("Do you want to continue?"):
+    if input("Do you want to continue?").lower() not in ['y', 'yes']:
         print("Exiting...")
         exit()
 
@@ -557,15 +536,15 @@ def cli(
     ) as prog_bar:
         for file in files:  # File Benchmarking Loop
             ffmpeg_log.set_test_header(file["name"])
-            if debug_flag:
+            if args.debug_flag:
                 print()
                 print(f"| Current File: {file['name']}")
             filename = os.path.basename(file["source_url"])
-            current_file = os.path.abspath(f"{video_path}/{filename}")
+            current_file = os.path.abspath(f"{args.video_path}/{filename}")
             current_file = current_file.replace("\\", "\\\\")
             tests = file["data"]
             for test in tests:
-                if debug_flag:
+                if args.debug_flag:
                     print(
                         f"> > Current Test: {test['from_resolution']} - {test['to_resolution']}"
                     )
@@ -573,7 +552,7 @@ def cli(
                 for command in commands:
                     test_data = {}
                     if command["type"] in supported_types:
-                        if debug_flag:
+                        if args.debug_flag:
                             print(f"> > > Current Device: {command['type']}")
                         arguments = command["args"]
                         arguments = arguments.format(
@@ -585,8 +564,8 @@ def cli(
                         test_cmd = f"{ffmpeg_binary} {arguments}"
                         ffmpeg_log.set_test_args(test_cmd)
 
-                        valid, runs, result = benchmark(test_cmd, debug_flag, prog_bar)
-                        if not debug_flag:
+                        valid, runs, result = benchmark(test_cmd, args.debug_flag, prog_bar)
+                        if not args.debug_flag:
                             prog_bar.update(1)
 
                         test_data["id"] = test["id"]
@@ -609,10 +588,10 @@ def cli(
         "hwinfo": {"ffmpeg": ffmpeg_data, **system_info},
         "tests": benchmark_data,
     }
-    output_json(result_data, output_path, server_url)
-    if output_path:
-        if click.confirm("Do you want to upload your results to the server? "):
-            output_json(result_data, None, server_url)
+    output_json(result_data, args.output_path, args.server_url)
+    if args.output_path:
+        if input("Do you want to upload your results to the server? "):
+            output_json(result_data, None, args.server_url)
 
 def main():
     # function required by poetry entrypoint
