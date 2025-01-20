@@ -27,7 +27,7 @@ from jellybench_py import ffmpeg_log
 
 
 def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
-    # click.echo(f"{pid} |> Running FFMPEG Process: {pid}")
+    # print(f"{pid} |> Running FFMPEG Process: {pid}")
     timeout = 120  # Stop any process that runs for more then 120sec
     failure_reason = None
     try:
@@ -45,11 +45,6 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
         ffmpeg_stderr = ""
         retcode = 0
         failure_reason = "failed_timeout"
-
-    except Exception:
-        ffmpeg_stderr = ""
-        retcode = 0
-        failure_reason = "hard_ffmpeg_failure"
 
     if 0 < retcode < 255:
         ffmpeg_log.set_test_error(ffmpeg_stderr)
@@ -86,7 +81,7 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
     ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
     raw_worker_data = {}
     failure_reason = None
-    # click.echo(f"> Run with {worker_count} Processes")
+    # print(f"> Run with {worker_count} Processes")
     with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
         futures = {
             executor.submit(run_ffmpeg, nr, ffmpeg_cmd_list): nr
@@ -94,13 +89,10 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
         }
         for future in concurrent.futures.as_completed(futures):
             pid = futures[future]
-            try:
-                raw_worker_data[pid] = future.result()
-                # click.echo(f"> > > Finished Worker Process: {pid}")
-                if raw_worker_data[pid][1]:
-                    failure_reason = raw_worker_data[pid][1]
-            except Exception as e:
-                print(f"Worker {pid} generated an exception: {e}")
+            raw_worker_data[pid] = future.result()
+            # print(f"> > > Finished Worker Process: {pid}")
+            if raw_worker_data[pid][1]:
+                failure_reason = raw_worker_data[pid][1]
 
     if failure_reason:
         raw_worker_data = None

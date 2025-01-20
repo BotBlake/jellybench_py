@@ -48,12 +48,12 @@ def test_lshw():  # test if lshw is installed properly (Executable Path/ False)
 def run_lshw(hardware):
     lshw_path = test_lshw()
     if not lshw_path:
-        click.echo("Error")
-        click.echo()
-        click.echo(
-            "ERROR: lshw not installed. You may install it and try again.", err=True
+        print("Error")
+        print()
+        print(
+            "ERROR: lshw not installed. You may install it and try again."
         )
-        click.pause("Press any key to exit")
+        input("Press any key to exit")
         exit()
     hw_subproc = subprocess.run(
         [lshw_path, "-json", "-class", hardware],
@@ -214,12 +214,12 @@ def get_gpu_info() -> list:
             gpu_elements.append(entry)
 
     else:
-        click.echo("Error")
-        click.echo()
-        click.echo(
-            "ERROR: Unsupported OS, Hardware information not supported", err=True
+        print("Error")
+        print()
+        print(
+            "ERROR: Unsupported OS, Hardware information not supported"
         )
-        click.pause("Press any key to exit")
+        input("Press any key to exit")
         exit()
     return gpu_elements
 

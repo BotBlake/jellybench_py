@@ -26,8 +26,9 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import click
 import requests
 
-from jellybench_py import api, ffmpeg_log, hwi, worker
-
+from  jellybench_py import api, ffmpeg_log, hwi, worker
+from jellybench_py.constant import Constants, Style
+from jellybench_py.util import styled
 
 def obtainSource(
     target_path: str, source_url: str, hash_dict: dict, name: str, quiet: bool
@@ -38,15 +39,15 @@ def obtainSource(
         ]  # list of currently supported hashing methods
         message = ""
         if not hash_dict:
-            message = "Note: " + click.style("No file hash provided!", fg="yellow")
+            message = "Note: " + styled("No file hash provided!", [Style.YELLOW])
             return None, None, message
 
         for idx, hash in enumerate(hash_dict):
             if hash["type"] in supported_hashes:
-                message = f"Note: Compatible hashing method found. Using {hash["type"]}"
+                message = f"Note: Compatible hashing method found. Using {hash['type']}"
                 return hash["type"], hash["hash"], message
-        message = "Note: " + click.style(
-            "No compatible hashing method found.", fg="yellow"
+        message = "Note: " + styled(
+            "No compatible hashing method found.", [Style.YELLOW]
         )
         return None, None, message
 
@@ -90,9 +91,6 @@ def obtainSource(
 
         except requests.exceptions.RequestException:
             return False, "Request error"  # Network issues or invalid URL
-        except Exception as e:
-            print(e)
-            return False, "Unknown Error!"  # Catch any other exceptions silently
 
     hash_algorithm, source_hash, hash_message = match_hash(hash_dict)
 
@@ -106,9 +104,9 @@ def obtainSource(
             existing_checksum = calculate_sha256(file_path)  # checksum validation
 
         if existing_checksum == source_hash or source_hash is None:  # if valid/no sum
-            click.echo(" success!")
+            print(" success!")
             if not quiet:
-                click.echo(hash_message)
+                print(hash_message)
             return True, file_path  # Checksum valid, no need to download again
         else:
             os.remove(file_path)  # Delete file if checksum doesn't match
@@ -132,16 +130,16 @@ def obtainSource(
 def unpackArchive(archive_path, target_path):
     if os.path.exists(target_path):
         rmtree(target_path)
-        click.echo(
+        print(
             "INFO: "
-            + click.style("Replacing existing files with validated ones.", fg="cyan")
+            + styled("Replacing existing files with validated ones.", [Style.CYAN])
         )
     os.makedirs(target_path)
 
-    click.echo("Unpacking Archive...", nl=False)
+    print("Unpacking Archive...", end='')
     if archive_path.endswith((".zip", ".tar.gz", ".tar.xz")):
         unpack_archive(archive_path, target_path)
-    click.echo(" success!")
+    print(" success!")
 
 
 def format_gpu_arg(system_os, gpu, gpu_idx):
@@ -159,7 +157,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
     formatted_last_speed = "00.00"
     failure_reason = []
     if debug_flag:
-        click.echo(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
+        print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
         if not debug_flag:
             prog_bar.label = f"Testing | Workers: {total_workers:02d} | Last Speed: {formatted_last_speed}"
@@ -178,7 +176,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
             last_speed = output[1]["speed"]
             formatted_last_speed = f"{last_speed:05.2f}"
             if debug_flag:
-                click.echo(
+                print(
                     f"> > > > Scaleback success! Limit: {limited}, Total Workers: {total_workers}, Speed: {last_speed}"
                 )
             run = False
@@ -201,7 +199,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
                 formatted_last_speed = f"{last_speed:05.2f}"
             total_workers -= 1
             if debug_flag:
-                click.echo(
+                print(
                     f"> > > > Scaling back to: {total_workers}, Last Speed: {last_speed}"
                 )
         elif output[0] and total_workers == 0:  # Fail when infinite scaleback
@@ -220,11 +218,11 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
             total_workers += int(last_speed)
             formatted_last_speed = f"{last_speed:05.2f}"
             if debug_flag:
-                click.echo(
+                print(
                     f"> > > > Workers: {total_workers}, Last Speed: {last_speed}"
                 )
     if debug_flag:
-        click.echo(f"> > > > Failed: {failure_reason}")
+        print(f"> > > > Failed: {failure_reason}")
     if len(runs) > 0:
         max_streams = runs[(len(runs)) - 1]["workers"]
         result = {
@@ -249,7 +247,7 @@ def output_json(data, file_path, server_url):
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as json_file:
             json.dump(data, json_file, indent=4)
-        click.echo(f"Data successfully saved to {file_path}")
+        print(f"Data successfully saved to {file_path}")
     else:
         # upload to server
         api.upload(server_url, data)
@@ -290,7 +288,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], max_content_width=12
 @click.option(
     "--server",
     "server_url",
-    default="https://hwa.jellyfin.org/",
+    default=Constants.DEFAULT_SERVER_URL,
     show_default=True,
     help="Server URL for test data and result submition.",
 )
@@ -340,9 +338,9 @@ def cli(
     global debug
     debug = debug_flag
 
-    click.echo()
-    click.echo("Welcome to jellybench_py Cheeseburger Edition 🍔")
-    click.echo()
+    print()
+    print("Welcome to jellybench_py Cheeseburger Edition 🍔")
+    print()
 
     ffmpeg_log.create_log()
 
@@ -350,7 +348,7 @@ def cli(
     terminal_size = get_terminal_size((80, 20))
     terminal_width = terminal_size.columns
 
-    click.echo(click.style("Disclaimer", bold=True))
+    print(click.style("Disclaimer", bold=True))
     discplaimer_text = "Please close all background programs and plug the device into a power source if it is running on battery power before starting the benchmark."
 
     indent = "| "
@@ -360,57 +358,57 @@ def cli(
         initial_indent=indent,
         subsequent_indent=indent,
     )
-    click.echo(discplaimer_text)
+    print(discplaimer_text)
     if not click.confirm("Confirm"):
         exit(1)
 
-    click.echo()
+    print()
 
     if debug_flag:
-        click.echo(
+        print(
             click.style("Dev Mode", bg="magenta", fg="white")
             + ": Special Features and Output enabled  "
             + click.style("DO NOT UPLOAD RESULTS!", fg="red")
         )
-        click.echo()
-    click.echo(click.style("System Initialization", bold=True))
+        print()
+    print(click.style("System Initialization", bold=True))
 
     if not server_url.startswith("http") and debug_flag:
         if os.path.exists(server_url):
-            click.echo(
+            print(
                 click.style("|", bg="magenta", fg="white") + " Using local test-file"
             )
             platforms = "local"
             platform_id = "local"
         else:
-            click.echo()
-            click.echo("ERROR: Invalid Server URL", err=True)
-            click.pause("Press any key to exit")
+            print()
+            print("ERROR: Invalid Server URL")
+            input("Press any key to exit")
             exit()
     else:
-        if not (server_url == "https://hwa.jellyfin.org/"):
-            click.echo(
+        if server_url != Constants.DEFAULT_SERVER_URL:
+            print(
                 click.style("|", bg="magenta", fg="white")
                 + " Not using official Server!  "
-                + click.style("DO NOT UPLOAD RESULTS!", fg="red")
+                + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
             )
         platforms = api.getPlatform(
             server_url
         )  # obtain list of (supported) Platforms + ID's
         platform_id = hwi.get_platform_id(platforms)
 
-    click.echo("| Obtaining System Information...", nl=False)
+    print("| Obtaining System Information...", end='')
     system_info = hwi.get_system_info()
-    click.echo(" success!")
-    click.echo("| Detected System Config:")
-    click.echo(f"|   OS: {system_info['os']['pretty_name']}")
+    print(" success!")
+    print("| Detected System Config:")
+    print(f"|   OS: {system_info['os']['pretty_name']}")
     for cpu in system_info["cpu"]:
-        click.echo(f"|   CPU: {cpu['product']}")
-        click.echo(f"|     Threads: {cpu['cores']}")
+        print(f"|   CPU: {cpu['product']}")
+        print(f"|     Threads: {cpu['cores']}")
         if "architecture" in cpu:
-            click.echo(f"|     Arch: {cpu['architecture']}")
+            print(f"|     Arch: {cpu['architecture']}")
 
-    click.echo("|   RAM:")
+    print("|   RAM:")
     for ram in system_info["memory"]:
         vendor = ram["vendor"] if "vendor" in ram else "Generic"
         size = ram["size"]
@@ -423,12 +421,12 @@ def cli(
             size //= 1000
             units = "mb"
 
-        click.echo(f"|     - {vendor} {size} {units} {ram.get('FormFactor', 0)}")
+        print(f"|     - {vendor} {size} {units} {ram.get('FormFactor', 0)}")
 
-    click.echo("|   GPU(s):")
+    print("|   GPU(s):")
     for i, gpu in enumerate(system_info["gpu"], 1):
-        click.echo(f"|     {i}: {gpu['product']}")
-    # click.pause("Press any key to continue")
+        print(f"|     {i}: {gpu['product']}")
+    # input("Press any key to continue")
 
     # Logic for Hardware Selection
     supported_types = []
@@ -441,20 +439,20 @@ def cli(
     gpus = system_info["gpu"]
 
     if len(gpus) > 1 and gpu_input is None:
-        # click.echo("\\")
-        # click.echo(" \\")
-        # click.echo("  \\_")
-        click.echo("Multiple GPU's detected. Please select one to continue.")
-        # click.echo()
-        # click.echo("| 0: No GPU tests")
+        # print("\\")
+        # print(" \\")
+        # print("  \\_")
+        print("Multiple GPU's detected. Please select one to continue.")
+        # print()
+        # print("| 0: No GPU tests")
         # for i, gpu in enumerate(gpus, 1):
-        #     click.echo(f"    | {i}: {gpu['product']}, {gpu['vendor']}")
-        # click.echo()
+        #     print(f"    | {i}: {gpu['product']}, {gpu['vendor']}")
+        # print()
         gpu_input = click.prompt("Select GPU (0 to disable GPU tests)", type=int)
-        # click.echo("   _")
-        # click.echo("  /")
-        # click.echo(" /")
-        # click.echo("/")
+        # print("   _")
+        # print("  /")
+        # print(" /")
+        # print("/")
     # checks to see if the flag or the selector were used
     # if not assigns input of the first GPU
     elif gpu_input is None:
@@ -462,9 +460,9 @@ def cli(
 
     # Error if gpu_input is out of range
     if not (0 <= gpu_input <= len(gpus)):
-        click.echo()
-        click.echo("ERROR: Invalid GPU Input", err=True)
-        click.pause("Press any key to exit")
+        print()
+        print("ERROR: Invalid GPU Input")
+        input("Press any key to exit")
         exit()
 
     gpu_idx = gpu_input - 1
@@ -475,24 +473,24 @@ def cli(
 
     # Error if all hardware disabled
     if gpu_input == 0 and disable_cpu:
-        click.echo()
-        click.echo("ERROR: All Hardware Disabled", err=True)
-        click.pause("Press any key to exit")
+        print()
+        print("ERROR: All Hardware Disabled")
+        input("Press any key to exit")
         exit()
 
     # Stop Hardware Selection logic
 
     valid, server_data = api.getTestData(platform_id, platforms, server_url)
     if not valid:
-        click.echo(f"Cancled: {server_data}")
+        print(f"Cancled: {server_data}")
         exit()
-    click.echo(click.style("Done", fg="green"))
-    click.echo()
+    print(styled("Done", [Style.GREEN]))
+    print()
 
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
-    click.echo(click.style("Loading ffmpeg", bold=True))
-    click.echo('| Searching local "ffmpeg" -', nl=False)
+    print(click.style("Loading ffmpeg", bold=True))
+    print('| Searching local "ffmpeg" -', end='')
     ffmpeg_download = obtainSource(
         ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
@@ -502,8 +500,8 @@ def cli(
     )
 
     if ffmpeg_download[0] is False:
-        click.echo(f"An Error occured: {ffmpeg_download[1]}", err=True)
-        click.pause("Press any key to exit")
+        print(f"An Error occured: {ffmpeg_download[1]}")
+        input("Press any key to exit")
         exit()
     elif ffmpeg_download[1].endswith((".zip", ".tar.gz", ".tar.xz")):
         ffmpeg_files = f"{ffmpeg_path}/ffmpeg_files"
@@ -515,26 +513,26 @@ def cli(
         ffmpeg_binary = ffmpeg_download[1]
     ffmpeg_binary = os.path.abspath(ffmpeg_binary)
     ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
-    click.echo(click.style("Done", fg="green"))
-    click.echo()
+    print(styled("Done", [Style.GREEN]))
+    print()
 
     # Downloading Videos
     files = server_data["tests"]
-    click.echo(click.style("Obtaining Test-Files:", bold=True))
+    print(click.style("Obtaining Test-Files:", bold=True))
     for file in files:
         name = os.path.basename(file["name"])
-        click.echo(f'| "{name}" - local -', nl=False)
+        print(f'| "{name}" - local -', end='')
         success, output = obtainSource(
             video_path, file["source_url"], file["source_hashs"], name, quiet=True
         )
         if not success:
-            click.echo(" Error")
-            click.echo("")
-            click.echo(f"The following Error occured: {output}", err=True)
-            click.pause("Press any key to exit")
+            print(" Error")
+            print("")
+            print(f"The following Error occured: {output}")
+            input("Press any key to exit")
             exit()
-    click.echo(click.style("Done", fg="green"))
-    click.echo()
+    print(styled("Done", [Style.GREEN]))
+    print()
 
     # Count ammount of tests required to do:
     test_arg_count = 0
@@ -545,14 +543,14 @@ def cli(
             for command in commands:
                 if command["type"] in supported_types:
                     test_arg_count += 1
-    click.echo(f"We will do {test_arg_count} tests.")
+    print(f"We will do {test_arg_count} tests.")
 
     if not click.confirm("Do you want to continue?"):
-        click.echo("Exiting...")
+        print("Exiting...")
         exit()
 
     benchmark_data = []
-    click.echo()
+    print()
 
     with click.progressbar(
         length=test_arg_count, label="Starting Benchmark..."
@@ -560,15 +558,15 @@ def cli(
         for file in files:  # File Benchmarking Loop
             ffmpeg_log.set_test_header(file["name"])
             if debug_flag:
-                click.echo()
-                click.echo(f"| Current File: {file['name']}")
+                print()
+                print(f"| Current File: {file['name']}")
             filename = os.path.basename(file["source_url"])
             current_file = os.path.abspath(f"{video_path}/{filename}")
             current_file = current_file.replace("\\", "\\\\")
             tests = file["data"]
             for test in tests:
                 if debug_flag:
-                    click.echo(
+                    print(
                         f"> > Current Test: {test['from_resolution']} - {test['to_resolution']}"
                     )
                 commands = test["arguments"]
@@ -576,7 +574,7 @@ def cli(
                     test_data = {}
                     if command["type"] in supported_types:
                         if debug_flag:
-                            click.echo(f"> > > Current Device: {command['type']}")
+                            print(f"> > > Current Device: {command['type']}")
                         arguments = command["args"]
                         arguments = arguments.format(
                             video_file=current_file,
@@ -604,8 +602,8 @@ def cli(
 
                         if len(runs) >= 1:
                             benchmark_data.append(test_data)
-    click.echo("")  # Displaying Prompt, before attempting to output / build final dict
-    click.echo("Benchmark Done. Writing file to Output.")
+    print("")  # Displaying Prompt, before attempting to output / build final dict
+    print("Benchmark Done. Writing file to Output.")
     result_data = {
         "token": server_data["token"],
         "hwinfo": {"ffmpeg": ffmpeg_data, **system_info},
@@ -617,8 +615,5 @@ def cli(
             output_json(result_data, None, server_url)
 
 def main():
+    # function required by poetry entrypoint
     return cli(obj={})
-
-
-if __name__ == "__main__":
-    cli()
