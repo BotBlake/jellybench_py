@@ -91,9 +91,6 @@ def obtainSource(
 
         except requests.exceptions.RequestException:
             return False, "Request error"  # Network issues or invalid URL
-        except Exception as e:
-            print(e)
-            return False, "Unknown Error!"  # Catch any other exceptions silently
 
     hash_algorithm, source_hash, hash_message = match_hash(hash_dict)
 

@@ -27,19 +27,14 @@ import requests
 def getPlatform(server_url: str) -> list:
     print("| Fetch Supported Platforms...", end='')
     platforms = None
-    try:
-        response = requests.get(f"{server_url}/api/v1/TestDataApi/Platforms")
-        if response.status_code == 200:
-            print(" success!")
-            platforms = response.json()
-        else:
-            print(" Error")
-            print(f"ERROR: Server replied with {response.status_code}")
-            input("Press any key to exit")
-            exit()
-    except Exception:
+    response = requests.get(f"{server_url}/api/v1/TestDataApi/Platforms")
+    if response.status_code == 200:
+        print(" success!")
+        platforms = response.json()
+    else:
         print(" Error")
-        print("ERROR: No connection to Server possible")
+        print(f"ERROR: Server replied with {response.status_code}")
+        input("Press any key to exit")
         exit()
     platforms = platforms["platforms"]
     return platforms
@@ -66,11 +61,6 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
                 )
             )
             input("Press any key to exit")
-            exit()
-        except Exception as e:
-            print(" Error")
-            print()
-            print(f"ERROR: {e}")
             exit()
         return False, None
 

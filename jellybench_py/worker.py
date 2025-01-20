@@ -46,11 +46,6 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
         retcode = 0
         failure_reason = "failed_timeout"
 
-    except Exception:
-        ffmpeg_stderr = ""
-        retcode = 0
-        failure_reason = "hard_ffmpeg_failure"
-
     if 0 < retcode < 255:
         ffmpeg_log.set_test_error(ffmpeg_stderr)
         failure_reason = "generic_ffmpeg_failure"
@@ -94,13 +89,10 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
         }
         for future in concurrent.futures.as_completed(futures):
             pid = futures[future]
-            try:
-                raw_worker_data[pid] = future.result()
-                # print(f"> > > Finished Worker Process: {pid}")
-                if raw_worker_data[pid][1]:
-                    failure_reason = raw_worker_data[pid][1]
-            except Exception as e:
-                print(f"Worker {pid} generated an exception: {e}")
+            raw_worker_data[pid] = future.result()
+            # print(f"> > > Finished Worker Process: {pid}")
+            if raw_worker_data[pid][1]:
+                failure_reason = raw_worker_data[pid][1]
 
     if failure_reason:
         raw_worker_data = None
