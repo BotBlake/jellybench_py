@@ -625,3 +625,6 @@ def cli() -> None:
 def main():
     # function required by poetry entrypoint
     return cli(obj={})
+
+if __name__ == "__main__":
+    cli()
