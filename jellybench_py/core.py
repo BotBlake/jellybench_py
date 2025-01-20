@@ -614,3 +614,6 @@ def cli(
         if click.confirm("Do you want to upload your results to the server? "):
             output_json(result_data, None, server_url)
 
+def main():
+    # function required by poetry entrypoint
+    return cli(obj={})
