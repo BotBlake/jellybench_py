@@ -30,7 +30,7 @@ import requests
 
 from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
-from jellybench_py.util import styled
+from jellybench_py.util import confirm, styled
 
 
 def obtainSource(
@@ -357,7 +357,7 @@ def cli() -> None:
         subsequent_indent=indent,
     )
     print(discplaimer_text)
-    if input("Confirm? [Y/N]: ").lower() not in ["yes", "y"]:
+    if not confirm():
         exit(1)
 
     print()
@@ -454,7 +454,7 @@ def cli() -> None:
                     "Please select an available GPU by "
                     + "entering its index number into the prompt."
                 )
-            gpu_input = input("Select GPU (0 to disable GPU tests)")
+            gpu_input = input("Select GPU (0 to disable GPU tests): ")
         # print("   _")
         # print("  /")
         # print(" /")
@@ -540,8 +540,7 @@ def cli() -> None:
                     test_arg_count += 1
     print(f"We will do {test_arg_count} tests.")
 
-    if input("Do you want to continue?").lower() not in ["y", "yes"]:
-        print("Exiting...")
+    if not confirm():
         exit()
 
     benchmark_data = []
@@ -617,13 +616,13 @@ def cli() -> None:
     }
     output_json(result_data, args.output_path, args.server_url)
     if args.output_path:
-        if input("Do you want to upload your results to the server? "):
+        if confirm(message="Upload results to server?", default=True):
             output_json(result_data, None, args.server_url)
-
 
 
 def main():
     return cli()
+
 
 if __name__ == "__main__":
     main()
