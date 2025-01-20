@@ -21,6 +21,8 @@ import argparse
 import json
 import os
 import textwrap
+import progressbar
+from math import ceil
 from hashlib import sha256
 from shutil import get_terminal_size, rmtree, unpack_archive
 
@@ -77,16 +79,25 @@ def obtainSource(
             if total_size == 0:
                 return False, "Invalid file size"
             label = label.format(filename=filename, size=total_size / 1024.0 / 1024)
+
             with open(file_path, "wb") as file:
-                content_iter = response.iter_content(chunk_size=1024)
-                # Initialize the progress bar using Click's progressbar
-                with click.progressbar(
-                    content_iter, length=total_size / 1024, label=label
-                ) as bar:
-                    for chunk in bar:
+                # fa960a6a36cff9fb9df215ded55b57a1ac3285147849ef6be1d8ea63552ffc17
+                # Initialize the progress bar
+                total_chunks = ceil(total_size / 1024)
+                widgets = [
+                    f"{label}: ", progressbar.Percentage(), " ",
+                    progressbar.Bar(marker="=", left="[", right="]"), " ",
+                    progressbar.ETA()
+                ]
+
+                with progressbar.ProgressBar(max_value=total_chunks, widgets=widgets) as bar:
+                    progress = 0 # Track progress manually
+                    for chunk in response.iter_content(chunk_size=1024):
                         if chunk:
+                            progress += 1
                             file.write(chunk)
                             file.flush()
+                            bar.update(progress)
 
             return True, ""
 
@@ -121,10 +132,12 @@ def obtainSource(
         return success, file_path
 
     downloaded_checksum = calculate_sha256(file_path)  # checksum validation
+    #print(f"CHECKSUM: {downloaded_checksum}")
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         return True, file_path  # Checksum valid
     else:
-        os.remove(file_path)  # Delete file if checksum doesn't match
+        #os.remove(file_path)  # Delete file if checksum doesn't match
+        print(f"\nSource hash is {source_hash} but we got {downloaded_checksum}.")
         return False, "Invalid Checksum!"  # Checksum invalid
 
 
@@ -308,6 +321,8 @@ def parse_args():
         action="store_true",
         help="Enable additional debug output",
     )
+    return parser.parse_args()
+
 
 def cli() -> None:
     """
@@ -338,7 +353,7 @@ def cli() -> None:
         subsequent_indent=indent,
     )
     print(discplaimer_text)
-    if input("Confirm? [Y/N]").lower() in ['yes', 'y']:
+    if input("Confirm? [Y/N]: ").lower() not in ['yes', 'y']:
         exit(1)
 
     print()
@@ -417,7 +432,7 @@ def cli() -> None:
     # GPU Logic
     gpus = system_info["gpu"]
 
-    if len(gpus) > 1 and gpu_input is None:
+    if len(gpus) > 1 and args.gpu_input is None:
         # print("\\")
         # print(" \\")
         # print("  \\_")
@@ -427,24 +442,21 @@ def cli() -> None:
         # for i, gpu in enumerate(gpus, 1):
         #     print(f"    | {i}: {gpu['product']}, {gpu['vendor']}")
         # print()
-        gpu_input = input("Select GPU (0 to disable GPU tests)")
+        gpu_input = None
+        valid_indices = [str(x) for x in range(len(gpus)+1)]
+        while gpu_input not in valid_indices:
+            if gpu_input is not None:
+                print(
+                    "Please select an available GPU by "
+                    + "entering its index number into the prompt."
+                )
+            gpu_input = input("Select GPU (0 to disable GPU tests)")
         # print("   _")
         # print("  /")
         # print(" /")
         # print("/")
-    # checks to see if the flag or the selector were used
-    # if not assigns input of the first GPU
-    elif gpu_input is None:
-        gpu_input = 1
 
-    # Error if gpu_input is out of range
-    if not (0 <= gpu_input <= len(gpus)):
-        print()
-        print("ERROR: Invalid GPU Input")
-        input("Press any key to exit")
-        exit()
-
-    gpu_idx = gpu_input - 1
+    gpu_idx = int(gpu_input) - 1
 
     # Appends the selected GPU to supported types
     if gpu_input != 0:
@@ -530,8 +542,14 @@ def cli() -> None:
 
     benchmark_data = []
     print()
+    label = "Define this label string please."
+    widgets = [
+        f"{label}: ", progressbar.Percentage(), " ",
+        progressbar.Bar(marker="=", left="[", right="]"), " ",
+        progressbar.ETA()
+    ]
 
-    with click.progressbar(
+    with progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets)(
         length=test_arg_count, label="Starting Benchmark..."
     ) as prog_bar:
         for file in files:  # File Benchmarking Loop
