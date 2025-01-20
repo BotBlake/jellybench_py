@@ -516,6 +516,7 @@ def cli(
     else:
         ffmpeg_binary = ffmpeg_download[1]
     ffmpeg_binary = os.path.abspath(ffmpeg_binary)
+    ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
     click.echo(click.style("Done", fg="green"))
     click.echo()
 
