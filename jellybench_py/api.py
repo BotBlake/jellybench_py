@@ -92,6 +92,7 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
             click.echo(f"ERROR: Server replied with {response.status_code}")
             ratelimit_time = response.headers["retry-after"]
             click.echo(f"Ratelimited: Retry in {ratelimit_time}s")
+            exit(1)
         else:
             click.echo(" Error")
             click.echo(f"ERROR: Server replied with {response.status_code}")

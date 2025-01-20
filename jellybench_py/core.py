@@ -24,48 +24,77 @@ from hashlib import sha256
 from shutil import get_terminal_size, rmtree, unpack_archive
 
 import click
-from requests import get as reqGet
+import requests
 
 from jellybench_py import api, ffmpeg_log, hwi, worker
 
 
-def match_hash(hash_dict: dict, output: bool) -> tuple:
-    supported_hashes = [
-        "sha256",
-    ]  # list of currently supported hashing methods
-
-    if not hash_dict:
-        if output:
-            click.echo("Note: " + click.style("No file hash provided!", fg="yellow"))
-        return None, None
-
-    for hash in hash_dict:
-        if hash in supported_hashes:
-            if output:
-                click.echo(f"Note: Compatible hashing method found. Using {hash}")
-            return hash, hash_dict[hash]
-    if output:
-        click.echo(
-            "Note: "
-            + click.style("Note: No compatible hashing method found.", fg="yellow")
-        )
-    return None, None
-
-
-def calculate_sha256(file_path: str) -> str:
-    # Calculate SHA256 checksum of a file
-    sha256_hash = sha256()
-    with open(file_path, "rb") as f:
-        # Read and update hash string value in blocks of 4K
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest()
-
-
 def obtainSource(
-    target_path: str, source_url: str, hash_dict: dict, notify_on_download: bool
+    target_path: str, source_url: str, hash_dict: dict, name: str, quiet: bool
 ) -> tuple:
-    hash_algorithm, source_hash = match_hash(hash_dict, notify_on_download)
+    def match_hash(hash_dict: dict) -> tuple:
+        supported_hashes = [
+            "sha256",
+        ]  # list of currently supported hashing methods
+        message = ""
+        if not hash_dict:
+            message = "Note: " + click.style("No file hash provided!", fg="yellow")
+            return None, None, message
+
+        for idx, hash in enumerate(hash_dict):
+            if hash["type"] in supported_hashes:
+                message = f"Note: Compatible hashing method found. Using {hash["type"]}"
+                return hash["type"], hash["hash"], message
+        message = "Note: " + click.style(
+            "No compatible hashing method found.", fg="yellow"
+        )
+        return None, None, message
+
+    def calculate_sha256(file_path: str) -> str:
+        # Calculate SHA256 checksum of a file
+        sha256_hash = sha256()
+        with open(file_path, "rb") as f:
+            # Read and update hash string value in blocks of 4K
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
+
+    def download_file(url, file_path, filename):
+        label = r'| "{filename}" ({size:.2f}MB)'
+        try:
+            # Send HTTP request to get the file
+            response = requests.get(url, stream=True)
+
+            # If the response status is not successful, return failure
+            if response.status_code != 200:
+                return False, response.status_code  # Unable to download file
+
+            total_size = int(response.headers.get("content-length", 0))
+
+            # If total_size is 0, assume there was a problem with the file size info
+            if total_size == 0:
+                return False, "Invalid file size"
+            label = label.format(filename=filename, size=total_size / 1024.0 / 1024)
+            with open(file_path, "wb") as file:
+                content_iter = response.iter_content(chunk_size=1024)
+                # Initialize the progress bar using Click's progressbar
+                with click.progressbar(
+                    content_iter, length=total_size / 1024, label=label
+                ) as bar:
+                    for chunk in bar:
+                        if chunk:
+                            file.write(chunk)
+                            file.flush()
+
+            return True, ""
+
+        except requests.exceptions.RequestException:
+            return False, "Request error"  # Network issues or invalid URL
+        except Exception as e:
+            print(e)
+            return False, "Unknown Error!"  # Catch any other exceptions silently
+
+    hash_algorithm, source_hash, hash_message = match_hash(hash_dict)
 
     target_path = os.path.realpath(target_path)  # Relative Path!
     filename = os.path.basename(source_url)  # Extract filename from the URL
@@ -77,6 +106,9 @@ def obtainSource(
             existing_checksum = calculate_sha256(file_path)  # checksum validation
 
         if existing_checksum == source_hash or source_hash is None:  # if valid/no sum
+            click.echo(" success!")
+            if not quiet:
+                click.echo(hash_message)
             return True, file_path  # Checksum valid, no need to download again
         else:
             os.remove(file_path)  # Delete file if checksum doesn't match
@@ -85,20 +117,10 @@ def obtainSource(
     if not os.path.exists(target_path):
         os.makedirs(target_path)
 
-    if notify_on_download:
-        click.echo("Downloading file...", nl=False)
+    success, message = download_file(source_url, file_path, name)
+    if not success:
+        return success, file_path
 
-    try:  # Download file
-        response = reqGet(source_url)
-        if response.status_code == 200:
-            with open(file_path, "wb") as f:
-                f.write(response.content)
-            if notify_on_download:
-                click.echo(" success!")
-        else:
-            return False, response.status_code  # Unable to download file
-    except Exception:
-        return False, "Unknown Error!"  # Unable to download file
     downloaded_checksum = calculate_sha256(file_path)  # checksum validation
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         return True, file_path  # Checksum valid
@@ -472,9 +494,13 @@ def cli(
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
     click.echo(click.style("Loading ffmpeg", bold=True))
-
+    click.echo('| Searching local "ffmpeg" -', nl=False)
     ffmpeg_download = obtainSource(
-        ffmpeg_path, ffmpeg_data["ffmpeg_source_url"], ffmpeg_data["ffmpeg_hashs"], True
+        ffmpeg_path,
+        ffmpeg_data["ffmpeg_source_url"],
+        ffmpeg_data["ffmpeg_hashs"],
+        "ffmpeg",
+        quiet=False,
     )
 
     if ffmpeg_download[0] is False:
@@ -490,13 +516,6 @@ def cli(
     else:
         ffmpeg_binary = ffmpeg_download[1]
     ffmpeg_binary = os.path.abspath(ffmpeg_binary)
-    print("before")
-    print(repr(ffmpeg_binary))
-    print(ffmpeg_binary)
-    ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
-    print("after")
-    print(repr(ffmpeg_binary))
-    print(ffmpeg_binary)
     click.echo(click.style("Done", fg="green"))
     click.echo()
 
@@ -505,13 +524,11 @@ def cli(
     click.echo(click.style("Obtaining Test-Files:", bold=True))
     for file in files:
         name = os.path.basename(file["name"])
-        click.echo(f'| "{name}" -', nl=False)
+        click.echo(f'| "{name}" - local -', nl=False)
         success, output = obtainSource(
-            video_path, file["source_url"], file["source_hashs"], False
+            video_path, file["source_url"], file["source_hashs"], name, quiet=True
         )
-        if success:
-            click.echo(" success!")
-        else:
+        if not success:
             click.echo(" Error")
             click.echo("")
             click.echo(f"The following Error occured: {output}", err=True)
