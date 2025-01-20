@@ -621,6 +621,7 @@ def cli() -> None:
             output_json(result_data, None, args.server_url)
 
 
+
 def main():
     # function required by poetry entrypoint
     return cli(obj={})

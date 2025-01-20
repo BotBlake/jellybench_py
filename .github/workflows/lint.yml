@@ -1,0 +1,49 @@
+name: Lint Jellybench
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  lint:
+    strategy:
+      fail-fast: false
+      matrix:
+        py_version: ['3.9', '3.10', '3.11', '3.12']
+
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python ${{ matrix.py_version }}
+        uses: actions/setup-python@v5.3.0
+        with:
+          python-version: ${{ matrix.py_version }}
+
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v4
+
+      - name: Setup a local virtual environment (if no poetry.toml file)
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+
+      - uses: actions/cache@v4
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{matrix.py_version}}-${{ hashFiles('poetry.lock') }}
+
+      - name: Install the project dependencies
+        run: poetry install
+
+      - name: Lint with ruff
+        run: |
+          poetry run ruff check jellybench_py

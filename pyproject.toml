@@ -13,13 +13,10 @@ requests = "^2.31.0"
 wmi = { version = "*", markers = "sys_platform == 'win32'" }
 py-cpuinfo = "^9.0.0"
 
-
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.22.2"
-ruff = "^0.3.1"
+ruff = "^0.9.0"
 pre-commit = "^3.7.1"
-black = "^24.4.2"
-isort = "^5.13.2"
 
 [build-system]
 requires = ["poetry-core"]
@@ -27,6 +24,3 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 jellybench = 'jellybench_py.core:main'
-
-[tool.isort]
-profile = "black"
