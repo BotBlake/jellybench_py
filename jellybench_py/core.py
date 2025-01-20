@@ -21,17 +21,17 @@ import argparse
 import json
 import os
 import textwrap
-import progressbar
-from math import ceil
 from hashlib import sha256
+from math import ceil
 from shutil import get_terminal_size, rmtree, unpack_archive
 
-import click
+import progressbar
 import requests
 
-from  jellybench_py import api, ffmpeg_log, hwi, worker
+from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
 from jellybench_py.util import styled
+
 
 def obtainSource(
     target_path: str, source_url: str, hash_dict: dict, name: str, quiet: bool
@@ -85,13 +85,18 @@ def obtainSource(
                 # Initialize the progress bar
                 total_chunks = ceil(total_size / 1024)
                 widgets = [
-                    f"{label}: ", progressbar.Percentage(), " ",
-                    progressbar.Bar(marker="=", left="[", right="]"), " ",
-                    progressbar.ETA()
+                    f"{label}: ",
+                    progressbar.Percentage(),
+                    " ",
+                    progressbar.Bar(marker="=", left="[", right="]"),
+                    " ",
+                    progressbar.ETA(),
                 ]
 
-                with progressbar.ProgressBar(max_value=total_chunks, widgets=widgets) as bar:
-                    progress = 0 # Track progress manually
+                with progressbar.ProgressBar(
+                    max_value=total_chunks, widgets=widgets
+                ) as bar:
+                    progress = 0  # Track progress manually
                     for chunk in response.iter_content(chunk_size=1024):
                         if chunk:
                             progress += 1
@@ -132,11 +137,11 @@ def obtainSource(
         return success, file_path
 
     downloaded_checksum = calculate_sha256(file_path)  # checksum validation
-    #print(f"CHECKSUM: {downloaded_checksum}")
+    # print(f"CHECKSUM: {downloaded_checksum}")
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         return True, file_path  # Checksum valid
     else:
-        #os.remove(file_path)  # Delete file if checksum doesn't match
+        # os.remove(file_path)  # Delete file if checksum doesn't match
         print(f"\nSource hash is {source_hash} but we got {downloaded_checksum}.")
         return False, "Invalid Checksum!"  # Checksum invalid
 
@@ -150,7 +155,7 @@ def unpackArchive(archive_path, target_path):
         )
     os.makedirs(target_path)
 
-    print("Unpacking Archive...", end='')
+    print("Unpacking Archive...", end="")
     if archive_path.endswith((".zip", ".tar.gz", ".tar.xz")):
         unpack_archive(archive_path, target_path)
     print(" success!")
@@ -232,9 +237,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
             total_workers += int(last_speed)
             formatted_last_speed = f"{last_speed:05.2f}"
             if debug_flag:
-                print(
-                    f"> > > > Workers: {total_workers}, Last Speed: {last_speed}"
-                )
+                print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     if debug_flag:
         print(f"> > > > Failed: {failure_reason}")
     if len(runs) > 0:
@@ -265,6 +268,7 @@ def output_json(data, file_path, server_url):
     else:
         # upload to server
         api.upload(server_url, data)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -353,7 +357,7 @@ def cli() -> None:
         subsequent_indent=indent,
     )
     print(discplaimer_text)
-    if input("Confirm? [Y/N]: ").lower() not in ['yes', 'y']:
+    if input("Confirm? [Y/N]: ").lower() not in ["yes", "y"]:
         exit(1)
 
     print()
@@ -391,7 +395,7 @@ def cli() -> None:
         )  # obtain list of (supported) Platforms + ID's
         platform_id = hwi.get_platform_id(platforms)
 
-    print("| Obtaining System Information...", end='')
+    print("| Obtaining System Information...", end="")
     system_info = hwi.get_system_info()
     print(" success!")
     print("| Detected System Config:")
@@ -443,7 +447,7 @@ def cli() -> None:
         #     print(f"    | {i}: {gpu['product']}, {gpu['vendor']}")
         # print()
         gpu_input = None
-        valid_indices = [str(x) for x in range(len(gpus)+1)]
+        valid_indices = [str(x) for x in range(len(gpus) + 1)]
         while gpu_input not in valid_indices:
             if gpu_input is not None:
                 print(
@@ -481,7 +485,7 @@ def cli() -> None:
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
     print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg" -', end='')
+    print('| Searching local "ffmpeg" -', end="")
     ffmpeg_download = obtainSource(
         args.ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
@@ -512,7 +516,7 @@ def cli() -> None:
     print(styled("Obtaining Test-Files:", [Style.BOLD]))
     for file in files:
         name = os.path.basename(file["name"])
-        print(f'| "{name}" - local -', end='')
+        print(f'| "{name}" - local -', end="")
         success, output = obtainSource(
             args.video_path, file["source_url"], file["source_hashs"], name, quiet=True
         )
@@ -536,7 +540,7 @@ def cli() -> None:
                     test_arg_count += 1
     print(f"We will do {test_arg_count} tests.")
 
-    if input("Do you want to continue?").lower() not in ['y', 'yes']:
+    if input("Do you want to continue?").lower() not in ["y", "yes"]:
         print("Exiting...")
         exit()
 
@@ -544,9 +548,12 @@ def cli() -> None:
     print()
     label = "Define this label string please."
     widgets = [
-        f"{label}: ", progressbar.Percentage(), " ",
-        progressbar.Bar(marker="=", left="[", right="]"), " ",
-        progressbar.ETA()
+        f"{label}: ",
+        progressbar.Percentage(),
+        " ",
+        progressbar.Bar(marker="=", left="[", right="]"),
+        " ",
+        progressbar.ETA(),
     ]
 
     with progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets)(
@@ -582,7 +589,9 @@ def cli() -> None:
                         test_cmd = f"{ffmpeg_binary} {arguments}"
                         ffmpeg_log.set_test_args(test_cmd)
 
-                        valid, runs, result = benchmark(test_cmd, args.debug_flag, prog_bar)
+                        valid, runs, result = benchmark(
+                            test_cmd, args.debug_flag, prog_bar
+                        )
                         if not args.debug_flag:
                             prog_bar.update(1)
 
@@ -610,6 +619,7 @@ def cli() -> None:
     if args.output_path:
         if input("Do you want to upload your results to the server? "):
             output_json(result_data, None, args.server_url)
+
 
 def main():
     # function required by poetry entrypoint

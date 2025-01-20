@@ -1,2 +1,1 @@
-import jellybench_py.core as core
-
+from jellybench_py import core as core
