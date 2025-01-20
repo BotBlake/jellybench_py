@@ -26,8 +26,9 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import click
 import requests
 
-import api, ffmpeg_log, hwi, worker
-
+from  jellybench_py import api, ffmpeg_log, hwi, worker
+from jellybench_py.constant import Constants, Style
+from jellybench_py.util import styled
 
 def obtainSource(
     target_path: str, source_url: str, hash_dict: dict, name: str, quiet: bool
@@ -38,15 +39,15 @@ def obtainSource(
         ]  # list of currently supported hashing methods
         message = ""
         if not hash_dict:
-            message = "Note: " + click.style("No file hash provided!", fg="yellow")
+            message = "Note: " + styled("No file hash provided!", [Style.YELLOW])
             return None, None, message
 
         for idx, hash in enumerate(hash_dict):
             if hash["type"] in supported_hashes:
                 message = f"Note: Compatible hashing method found. Using {hash['type']}"
                 return hash["type"], hash["hash"], message
-        message = "Note: " + click.style(
-            "No compatible hashing method found.", fg="yellow"
+        message = "Note: " + styled(
+            "No compatible hashing method found.", [Style.YELLOW]
         )
         return None, None, message
 
@@ -134,7 +135,7 @@ def unpackArchive(archive_path, target_path):
         rmtree(target_path)
         print(
             "INFO: "
-            + click.style("Replacing existing files with validated ones.", fg="cyan")
+            + styled("Replacing existing files with validated ones.", [Style.CYAN])
         )
     os.makedirs(target_path)
 
@@ -290,7 +291,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], max_content_width=12
 @click.option(
     "--server",
     "server_url",
-    default="https://hwa.jellyfin.org",
+    default=Constants.DEFAULT_SERVER_URL,
     show_default=True,
     help="Server URL for test data and result submition.",
 )
@@ -385,14 +386,14 @@ def cli(
         else:
             print()
             print("ERROR: Invalid Server URL")
-            click.pause("Press any key to exit")
+            input("Press any key to exit")
             exit()
     else:
-        if not (server_url == "https://hwa.jellyfin.org/"):
+        if server_url != Constants.DEFAULT_SERVER_URL:
             print(
                 click.style("|", bg="magenta", fg="white")
                 + " Not using official Server!  "
-                + click.style("DO NOT UPLOAD RESULTS!", fg="red")
+                + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
             )
         platforms = api.getPlatform(
             server_url
@@ -428,7 +429,7 @@ def cli(
     print("|   GPU(s):")
     for i, gpu in enumerate(system_info["gpu"], 1):
         print(f"|     {i}: {gpu['product']}")
-    # click.pause("Press any key to continue")
+    # input("Press any key to continue")
 
     # Logic for Hardware Selection
     supported_types = []
@@ -464,7 +465,7 @@ def cli(
     if not (0 <= gpu_input <= len(gpus)):
         print()
         print("ERROR: Invalid GPU Input")
-        click.pause("Press any key to exit")
+        input("Press any key to exit")
         exit()
 
     gpu_idx = gpu_input - 1
@@ -477,7 +478,7 @@ def cli(
     if gpu_input == 0 and disable_cpu:
         print()
         print("ERROR: All Hardware Disabled")
-        click.pause("Press any key to exit")
+        input("Press any key to exit")
         exit()
 
     # Stop Hardware Selection logic
@@ -486,7 +487,7 @@ def cli(
     if not valid:
         print(f"Cancled: {server_data}")
         exit()
-    print(click.style("Done", fg="green"))
+    print(styled("Done", [Style.GREEN]))
     print()
 
     # Download ffmpeg
@@ -503,7 +504,7 @@ def cli(
 
     if ffmpeg_download[0] is False:
         print(f"An Error occured: {ffmpeg_download[1]}")
-        click.pause("Press any key to exit")
+        input("Press any key to exit")
         exit()
     elif ffmpeg_download[1].endswith((".zip", ".tar.gz", ".tar.xz")):
         ffmpeg_files = f"{ffmpeg_path}/ffmpeg_files"
@@ -515,7 +516,7 @@ def cli(
         ffmpeg_binary = ffmpeg_download[1]
     ffmpeg_binary = os.path.abspath(ffmpeg_binary)
     ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
-    print(click.style("Done", fg="green"))
+    print(styled("Done", [Style.GREEN]))
     print()
 
     # Downloading Videos
@@ -531,9 +532,9 @@ def cli(
             print(" Error")
             print("")
             print(f"The following Error occured: {output}")
-            click.pause("Press any key to exit")
+            input("Press any key to exit")
             exit()
-    print(click.style("Done", fg="green"))
+    print(styled("Done", [Style.GREEN]))
     print()
 
     # Count ammount of tests required to do:
@@ -616,9 +617,3 @@ def cli(
         if click.confirm("Do you want to upload your results to the server? "):
             output_json(result_data, None, server_url)
 
-def main():
-    return cli(obj={})
-
-
-if __name__ == "__main__":
-    cli()

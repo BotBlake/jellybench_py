@@ -1,6 +1,2 @@
-from jellybench_py import core
+import jellybench_py.core as core
 
-
-def run():
-    print("This method is available for import!")
-    core.run()

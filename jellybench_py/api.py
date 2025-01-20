@@ -18,12 +18,14 @@
 #
 ##########################################################################################
 from json import JSONDecodeError, load, dumps
+from jellybench_py.constant import Style
+from jellybench_py.util import styled
 
 import requests
 
 
 def getPlatform(server_url: str) -> list:
-    print("| Fetch Supported Platforms...", nl=False)
+    print("| Fetch Supported Platforms...", end='')
     platforms = None
     try:
         response = requests.get(f"{server_url}/api/v1/TestDataApi/Platforms")
@@ -45,7 +47,7 @@ def getPlatform(server_url: str) -> list:
 
 def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple:
     valid = True
-    print("| Loading tests... ", nl=False)
+    print("| Loading tests... ", end='')
 
     # DevMode File Loading
     if platformID == "local" and platforms_data == "local":
@@ -58,14 +60,17 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
             print(" Error")
             print()
             print(
-                "ERROR: Failed to decode JSON. Please check the file format.", err=True
+                styled(
+                    "ERROR: Failed to decode JSON. Please check the file format.",
+                    [Style.RED, Style.BOLD]
+                )
             )
             input("Press any key to exit")
             exit()
         except Exception as e:
             print(" Error")
             print()
-            print(f"ERROR: {e}", err=True)
+            print(f"ERROR: {e}")
             exit()
         return False, None
 
@@ -94,7 +99,12 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
             exit(1)
         else:
             print(" Error")
-            print(f"ERROR: Server replied with {response.status_code}")
+            print(
+                styled(
+                    f"ERROR: Server replied with {response.status_code}",
+                    [Style.RED, Style.BOLD]
+                )
+            )
             input("Press any key to exit")
             exit()
     except Exception:
@@ -104,7 +114,7 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
     return valid, test_data
 
 def upload(server_url: str, data: dict):
-    print("| Uploading to Server... ", nl=False)
+    print("| Uploading to Server... ", end='')
     api_url = f"{server_url}/api/v1/SubmissionApi"
     headers = {
         'Content-Type': 'application/json'
