@@ -179,8 +179,11 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
         print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
         if not debug_flag:
-            prog_bar.label = f"Testing | Workers: {total_workers:02d} | Last Speed: {formatted_last_speed}"
-            prog_bar.render_progress()
+            prog_bar.update(
+                status="Testing",
+                workers=f"{total_workers:02d}",
+                speed=formatted_last_speed,
+            )
         output = worker.workMan(total_workers, ffmpeg_cmd)
         # First check if we continue Running:
         # Stop when first run failed
@@ -248,12 +251,11 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
             "single_worker_speed": runs[(len(runs)) - 1]["speed"],
             "single_worker_rss_kb": runs[(len(runs)) - 1]["rss_kb"],
         }
-        prog_bar.label = (
-            f"Done    | Workers: {max_streams} | Last Speed: {formatted_last_speed}"
-        )
+        prog_bar.update(status="Done", workers=max_streams, speed=formatted_last_speed)
         return True, runs, result
     else:
         prog_bar.label = "Skipped | Workers: 00 | Last Speed: 00.00"
+        prog_bar.update(status="Skipped", workers=0, speed=0)
         return False, runs, {}
 
 
@@ -545,9 +547,22 @@ def cli() -> None:
 
     benchmark_data = []
     print()
-    label = "Define this label string please."
     widgets = [
-        f"{label}: ",
+        progressbar.Variable(
+            "status", format=styled("Status: ", [Style.GREEN]) + "{formatted_value}  "
+        ),
+        progressbar.Variable(
+            "workers",
+            format=styled("Workers: ", [Style.GREEN]) + "{formatted_value}",
+            width=4,
+            precision=2,
+        ),
+        progressbar.Variable(
+            "speed",
+            format=styled("Last Speed: ", [Style.GREEN]) + "{formatted_value}",
+            width=8,
+            precision=6,
+        ),
         progressbar.Percentage(),
         " ",
         progressbar.Bar(marker="=", left="[", right="]"),
@@ -555,9 +570,9 @@ def cli() -> None:
         progressbar.ETA(),
     ]
 
-    with progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets)(
-        length=test_arg_count, label="Starting Benchmark..."
-    ) as prog_bar:
+    with progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets) as prog_bar:
+        progress = 0
+        prog_bar.update(progress, status="Starting Benchmark", workers=0, speed=0)
         for file in files:  # File Benchmarking Loop
             ffmpeg_log.set_test_header(file["name"])
             if args.debug_flag:
@@ -592,8 +607,8 @@ def cli() -> None:
                             test_cmd, args.debug_flag, prog_bar
                         )
                         if not args.debug_flag:
-                            prog_bar.update(1)
-
+                            progress += 1
+                            prog_bar.update(progress)
                         test_data["id"] = test["id"]
                         test_data["type"] = command["type"]
                         if command["type"] != "cpu":
