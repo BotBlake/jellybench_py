@@ -571,7 +571,6 @@ def cli() -> None:
 
     with progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets) as prog_bar:
         progress = 0
-        prog_bar.update(progress, status="Starting Benchmark", workers=0, speed=0)
         for file in files:  # File Benchmarking Loop
             ffmpeg_log.set_test_header(file["name"])
             if args.debug_flag:
