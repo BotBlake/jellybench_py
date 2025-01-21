@@ -49,7 +49,9 @@ def run_lshw(hardware):
     if not lshw_path:
         print("Error")
         print()
-        print("ERROR: lshw not installed. You may install it and try again.")
+        print(
+            "ERROR: lshw not installed. You may install it and try again."
+        )
         input("Press any key to exit")
         exit()
     hw_subproc = subprocess.run(
@@ -163,7 +165,7 @@ def get_gpu_info() -> list:
 
             vendor = gpu.AdapterCompatibility.strip().lower()
             gpu_element = {
-                "id": f"GPU{i + 1}",
+                "id": f"GPU{i+1}",
                 "class": "display",
                 "description": gpu.creationClassName.strip(),
                 "product": gpu.Name,
@@ -213,7 +215,9 @@ def get_gpu_info() -> list:
     else:
         print("Error")
         print()
-        print("ERROR: Unsupported OS, Hardware information not supported")
+        print(
+            "ERROR: Unsupported OS, Hardware information not supported"
+        )
         input("Press any key to exit")
         exit()
     return gpu_elements

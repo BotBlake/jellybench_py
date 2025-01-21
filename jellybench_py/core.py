@@ -17,20 +17,18 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 ##########################################################################################
-import argparse
 import json
 import os
 import textwrap
 from hashlib import sha256
-from math import ceil
 from shutil import get_terminal_size, rmtree, unpack_archive
 
-import progressbar
+import click
 import requests
 
 from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
-from jellybench_py.util import confirm, styled
+from jellybench_py.util import styled
 
 
 def obtainSource(
@@ -48,7 +46,7 @@ def obtainSource(
         for idx, hash in enumerate(hash_dict):
             if hash["type"] in supported_hashes:
                 message = f"Note: Compatible hashing method found. Using {hash['type']}"
-                return hash["type"], hash["hash"].lower(), message
+                return hash["type"], hash["hash"], message
         message = "Note: " + styled(
             "No compatible hashing method found.", [Style.YELLOW]
         )
@@ -79,30 +77,16 @@ def obtainSource(
             if total_size == 0:
                 return False, "Invalid file size"
             label = label.format(filename=filename, size=total_size / 1024.0 / 1024)
-
             with open(file_path, "wb") as file:
-                # fa960a6a36cff9fb9df215ded55b57a1ac3285147849ef6be1d8ea63552ffc17
-                # Initialize the progress bar
-                total_chunks = ceil(total_size / 1024)
-                widgets = [
-                    f"{label}: ",
-                    progressbar.Percentage(),
-                    " ",
-                    progressbar.Bar(marker="=", left="[", right="]"),
-                    " ",
-                    progressbar.ETA(),
-                ]
-
-                with progressbar.ProgressBar(
-                    max_value=total_chunks, widgets=widgets
+                content_iter = response.iter_content(chunk_size=1024)
+                # Initialize the progress bar using Click's progressbar
+                with click.progressbar(
+                    content_iter, length=total_size / 1024, label=label
                 ) as bar:
-                    progress = 0  # Track progress manually
-                    for chunk in response.iter_content(chunk_size=1024):
+                    for chunk in bar:
                         if chunk:
-                            progress += 1
                             file.write(chunk)
                             file.flush()
-                            bar.update(progress)
 
             return True, ""
 
@@ -137,12 +121,10 @@ def obtainSource(
         return success, file_path
 
     downloaded_checksum = calculate_sha256(file_path)  # checksum validation
-    # print(f"CHECKSUM: {downloaded_checksum}")
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         return True, file_path  # Checksum valid
     else:
-        # os.remove(file_path)  # Delete file if checksum doesn't match
-        print(f"\nSource hash is {source_hash} but we got {downloaded_checksum}.")
+        os.remove(file_path)  # Delete file if checksum doesn't match
         return False, "Invalid Checksum!"  # Checksum invalid
 
 
@@ -155,7 +137,7 @@ def unpackArchive(archive_path, target_path):
         )
     os.makedirs(target_path)
 
-    print("Unpacking Archive...", end="")
+    print("Unpacking Archive...", end='')
     if archive_path.endswith((".zip", ".tar.gz", ".tar.xz")):
         unpack_archive(archive_path, target_path)
     print(" success!")
@@ -179,11 +161,8 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
         print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
         if not debug_flag:
-            prog_bar.update(
-                status="Testing",
-                workers=f"{total_workers:02d}",
-                speed=formatted_last_speed,
-            )
+            prog_bar.label = f"Testing | Workers: {total_workers:02d} | Last Speed: {formatted_last_speed}"
+            prog_bar.render_progress()
         output = worker.workMan(total_workers, ffmpeg_cmd)
         # First check if we continue Running:
         # Stop when first run failed
@@ -240,7 +219,9 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
             total_workers += int(last_speed)
             formatted_last_speed = f"{last_speed:05.2f}"
             if debug_flag:
-                print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
+                print(
+                    f"> > > > Workers: {total_workers}, Last Speed: {last_speed}"
+                )
     if debug_flag:
         print(f"> > > > Failed: {failure_reason}")
     if len(runs) > 0:
@@ -251,11 +232,12 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
             "single_worker_speed": runs[(len(runs)) - 1]["speed"],
             "single_worker_rss_kb": runs[(len(runs)) - 1]["rss_kb"],
         }
-        prog_bar.update(status="Done", workers=max_streams, speed=formatted_last_speed)
+        prog_bar.label = (
+            f"Done    | Workers: {max_streams} | Last Speed: {formatted_last_speed}"
+        )
         return True, runs, result
     else:
         prog_bar.label = "Skipped | Workers: 00 | Last Speed: 00.00"
-        prog_bar.update(status="Skipped", workers=0, speed=0)
         return False, runs, {}
 
 
@@ -272,71 +254,90 @@ def output_json(data, file_path, server_url):
         api.upload(server_url, data)
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--ffmpeg",
-        dest="ffmpeg_path",
-        type=str,
-        default="./ffmpeg",
-        help="Path for JellyfinFFMPEG download/execution (default: ./ffmpeg)",
-    )
-
-    parser.add_argument(
-        "--videos",
-        dest="video_path",
-        type=str,
-        default="./videos",
-        help="Path for download of test files (SSD required) (default: ./videos)",
-    )
-
-    parser.add_argument(
-        "--server",
-        dest="server_url",
-        type=str,
-        default=Constants.DEFAULT_SERVER_URL,
-        help=f"Server URL for test data and result submission (default: {Constants.DEFAULT_SERVER_URL})",
-    )
-
-    parser.add_argument(
-        "--output_path",
-        dest="output_path",
-        type=str,
-        default="./output.json",
-        help="Path to the output JSON file (default: ./output.json)",
-    )
-
-    parser.add_argument(
-        "--gpu",
-        dest="gpu_input",
-        type=int,
-        required=False,
-        help="Select which GPU to use for testing",
-    )
-
-    parser.add_argument(
-        "--nocpu",
-        dest="disable_cpu",
-        action="store_true",
-        help="Select whether or not to use your CPU(s) for testing",
-    )
-
-    parser.add_argument(
-        "--debug",
-        dest="debug_flag",
-        action="store_true",
-        help="Enable additional debug output",
-    )
-    return parser.parse_args()
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], max_content_width=120)
 
 
-def cli() -> None:
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "--ffmpeg",
+    "ffmpeg_path",
+    type=click.Path(
+        resolve_path=True,
+        dir_okay=True,
+        writable=True,
+        executable=True,
+    ),
+    default="./ffmpeg",
+    show_default=True,
+    required=False,
+    help="Path for JellyfinFFMPEG Download/execution",
+)
+@click.option(
+    "--videos",
+    "video_path",
+    type=click.Path(
+        resolve_path=True,
+        dir_okay=True,
+        writable=True,
+        readable=True,
+    ),
+    default="./videos",
+    show_default=True,
+    required=False,
+    help="Path for download of test files. (SSD required)",
+)
+@click.option(
+    "--server",
+    "server_url",
+    default=Constants.DEFAULT_SERVER_URL,
+    show_default=True,
+    help="Server URL for test data and result submition.",
+)
+@click.option(
+    "--output_path",
+    type=click.Path(),
+    default="./output.json",
+    show_default=True,
+    required=False,
+    help="Path to the output JSON file.",
+)
+@click.option(
+    "--gpu",
+    "gpu_input",
+    type=int,
+    required=False,
+    help="Select which gpu to use for testing",
+)
+@click.option(
+    "--nocpu",
+    "disable_cpu",
+    type=bool,
+    is_flag=True,
+    required=False,
+    default=False,
+    help="Select whether or not to use your cpu(s) for testing",
+)
+@click.option(
+    "--debug",
+    "debug_flag",
+    is_flag=True,
+    default=False,
+    help="Enable additional debug output",
+)
+def cli(
+    ffmpeg_path: str,
+    video_path: str,
+    server_url: str,
+    output_path: str,
+    gpu_input: int,
+    disable_cpu: bool,
+    debug_flag: bool,
+) -> None:
     """
     Python Transcoding Acceleration Benchmark Client made for Jellyfin Hardware Survey
     """
-    args = parse_args()
     global debug
-    debug = args.debug_flag
+    debug = debug_flag
 
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
@@ -348,7 +349,7 @@ def cli() -> None:
     terminal_size = get_terminal_size((80, 20))
     terminal_width = terminal_size.columns
 
-    print(styled("Disclaimer", [Style.BOLD]))
+    print(click.style("Disclaimer", bold=True))
     discplaimer_text = "Please close all background programs and plug the device into a power source if it is running on battery power before starting the benchmark."
 
     indent = "| "
@@ -359,24 +360,24 @@ def cli() -> None:
         subsequent_indent=indent,
     )
     print(discplaimer_text)
-    if not confirm():
+    if not click.confirm("Confirm"):
         exit(1)
 
     print()
 
-    if args.debug_flag:
+    if debug_flag:
         print(
-            styled("Dev Mode", [Style.BG_MAGENTA, Style.WHITE])
+            click.style("Dev Mode", bg="magenta", fg="white")
             + ": Special Features and Output enabled  "
-            + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
+            + click.style("DO NOT UPLOAD RESULTS!", fg="red")
         )
         print()
-    print(styled("System Initialization", [Style.BOLD]))
+    print(click.style("System Initialization", bold=True))
 
-    if not args.server_url.startswith("http") and args.debug_flag:
-        if os.path.exists(args.server_url):
+    if not server_url.startswith("http") and debug_flag:
+        if os.path.exists(server_url):
             print(
-                styled("|", [Style.BG_MAGENTA, Style.WHITE]) + " Using local test-file"
+                click.style("|", bg="magenta", fg="white") + " Using local test-file"
             )
             platforms = "local"
             platform_id = "local"
@@ -386,18 +387,18 @@ def cli() -> None:
             input("Press any key to exit")
             exit()
     else:
-        if args.server_url != Constants.DEFAULT_SERVER_URL:
+        if server_url != Constants.DEFAULT_SERVER_URL:
             print(
-                styled("|", [Style.BG_MAGENTA, Style.WHITE])
+                click.style("|", bg="magenta", fg="white")
                 + " Not using official Server!  "
                 + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
             )
         platforms = api.getPlatform(
-            args.server_url
+            server_url
         )  # obtain list of (supported) Platforms + ID's
         platform_id = hwi.get_platform_id(platforms)
 
-    print("| Obtaining System Information...", end="")
+    print("| Obtaining System Information...", end='')
     system_info = hwi.get_system_info()
     print(" success!")
     print("| Detected System Config:")
@@ -432,13 +433,13 @@ def cli() -> None:
     supported_types = []
 
     # CPU Logic
-    if not args.disable_cpu:
+    if not disable_cpu:
         supported_types.append("cpu")
 
     # GPU Logic
     gpus = system_info["gpu"]
 
-    if len(gpus) > 1 and args.gpu_input is None:
+    if len(gpus) > 1 and gpu_input is None:
         # print("\\")
         # print(" \\")
         # print("  \\_")
@@ -448,28 +449,31 @@ def cli() -> None:
         # for i, gpu in enumerate(gpus, 1):
         #     print(f"    | {i}: {gpu['product']}, {gpu['vendor']}")
         # print()
-        gpu_input = None
-        valid_indices = [str(x) for x in range(len(gpus) + 1)]
-        while gpu_input not in valid_indices:
-            if gpu_input is not None:
-                print(
-                    "Please select an available GPU by "
-                    + "entering its index number into the prompt."
-                )
-            gpu_input = input("Select GPU (0 to disable GPU tests): ")
+        gpu_input = click.prompt("Select GPU (0 to disable GPU tests)", type=int)
         # print("   _")
         # print("  /")
         # print(" /")
         # print("/")
+    # checks to see if the flag or the selector were used
+    # if not assigns input of the first GPU
+    elif gpu_input is None:
+        gpu_input = 1
 
-    gpu_idx = int(gpu_input) - 1
+    # Error if gpu_input is out of range
+    if not (0 <= gpu_input <= len(gpus)):
+        print()
+        print("ERROR: Invalid GPU Input")
+        input("Press any key to exit")
+        exit()
+
+    gpu_idx = gpu_input - 1
 
     # Appends the selected GPU to supported types
     if gpu_input != 0:
         supported_types.append(gpus[gpu_idx]["vendor"])
 
     # Error if all hardware disabled
-    if gpu_input == 0 and args.disable_cpu:
+    if gpu_input == 0 and disable_cpu:
         print()
         print("ERROR: All Hardware Disabled")
         input("Press any key to exit")
@@ -477,19 +481,19 @@ def cli() -> None:
 
     # Stop Hardware Selection logic
 
-    valid, server_data = api.getTestData(platform_id, platforms, args.server_url)
+    valid, server_data = api.getTestData(platform_id, platforms, server_url)
     if not valid:
-        print(f"Cancelled: {server_data}")
+        print(f"Cancled: {server_data}")
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
 
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
-    print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg" -', end="")
+    print(click.style("Loading ffmpeg", bold=True))
+    print('| Searching local "ffmpeg" -', end='')
     ffmpeg_download = obtainSource(
-        args.ffmpeg_path,
+        ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
         ffmpeg_data["ffmpeg_hashs"],
         "ffmpeg",
@@ -501,7 +505,7 @@ def cli() -> None:
         input("Press any key to exit")
         exit()
     elif ffmpeg_download[1].endswith((".zip", ".tar.gz", ".tar.xz")):
-        ffmpeg_files = f"{args.ffmpeg_path}/ffmpeg_files"
+        ffmpeg_files = f"{ffmpeg_path}/ffmpeg_files"
         unpackArchive(ffmpeg_download[1], ffmpeg_files)
         ffmpeg_binary = f"{ffmpeg_files}/ffmpeg"
         if system_info["os"]["id"] == "windows":
@@ -515,12 +519,12 @@ def cli() -> None:
 
     # Downloading Videos
     files = server_data["tests"]
-    print(styled("Obtaining Test-Files:", [Style.BOLD]))
+    print(click.style("Obtaining Test-Files:", bold=True))
     for file in files:
         name = os.path.basename(file["name"])
-        print(f'| "{name}" - local -', end="")
+        print(f'| "{name}" - local -', end='')
         success, output = obtainSource(
-            args.video_path, file["source_url"], file["source_hashs"], name, quiet=True
+            video_path, file["source_url"], file["source_hashs"], name, quiet=True
         )
         if not success:
             print(" Error")
@@ -542,48 +546,27 @@ def cli() -> None:
                     test_arg_count += 1
     print(f"We will do {test_arg_count} tests.")
 
-    if not confirm():
+    if not click.confirm("Do you want to continue?"):
+        print("Exiting...")
         exit()
 
     benchmark_data = []
     print()
-    widgets = [
-        progressbar.Variable(
-            "status", format=styled("Status: ", [Style.GREEN]) + "{formatted_value}  "
-        ),
-        progressbar.Variable(
-            "workers",
-            format=styled("Workers: ", [Style.GREEN]) + "{formatted_value}",
-            width=4,
-            precision=2,
-        ),
-        progressbar.Variable(
-            "speed",
-            format=styled("Last Speed: ", [Style.GREEN]) + "{formatted_value}",
-            width=8,
-            precision=6,
-        ),
-        progressbar.Percentage(),
-        " ",
-        progressbar.Bar(marker="=", left="[", right="]"),
-        " ",
-        progressbar.ETA(),
-    ]
 
-    with progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets) as prog_bar:
-        progress = 0
-        prog_bar.update(progress, status="Starting Benchmark", workers=0, speed=0)
+    with click.progressbar(
+        length=test_arg_count, label="Starting Benchmark..."
+    ) as prog_bar:
         for file in files:  # File Benchmarking Loop
             ffmpeg_log.set_test_header(file["name"])
-            if args.debug_flag:
+            if debug_flag:
                 print()
                 print(f"| Current File: {file['name']}")
             filename = os.path.basename(file["source_url"])
-            current_file = os.path.abspath(f"{args.video_path}/{filename}")
+            current_file = os.path.abspath(f"{video_path}/{filename}")
             current_file = current_file.replace("\\", "\\\\")
             tests = file["data"]
             for test in tests:
-                if args.debug_flag:
+                if debug_flag:
                     print(
                         f"> > Current Test: {test['from_resolution']} - {test['to_resolution']}"
                     )
@@ -591,7 +574,7 @@ def cli() -> None:
                 for command in commands:
                     test_data = {}
                     if command["type"] in supported_types:
-                        if args.debug_flag:
+                        if debug_flag:
                             print(f"> > > Current Device: {command['type']}")
                         arguments = command["args"]
                         arguments = arguments.format(
@@ -603,12 +586,10 @@ def cli() -> None:
                         test_cmd = f"{ffmpeg_binary} {arguments}"
                         ffmpeg_log.set_test_args(test_cmd)
 
-                        valid, runs, result = benchmark(
-                            test_cmd, args.debug_flag, prog_bar
-                        )
-                        if not args.debug_flag:
-                            progress += 1
-                            prog_bar.update(progress)
+                        valid, runs, result = benchmark(test_cmd, debug_flag, prog_bar)
+                        if not debug_flag:
+                            prog_bar.update(1)
+
                         test_data["id"] = test["id"]
                         test_data["type"] = command["type"]
                         if command["type"] != "cpu":
@@ -629,15 +610,12 @@ def cli() -> None:
         "hwinfo": {"ffmpeg": ffmpeg_data, **system_info},
         "tests": benchmark_data,
     }
-    output_json(result_data, args.output_path, args.server_url)
-    if args.output_path:
-        if confirm(message="Upload results to server?", default=True):
-            output_json(result_data, None, args.server_url)
+    output_json(result_data, output_path, server_url)
+    if output_path:
+        if click.confirm("Do you want to upload your results to the server? "):
+            output_json(result_data, None, server_url)
 
 
 def main():
-    return cli()
-
-
-if __name__ == "__main__":
-    main()
+    # function required by poetry entrypoint
+    return cli(obj={})
