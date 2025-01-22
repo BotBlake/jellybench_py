@@ -111,9 +111,20 @@ def upload(server_url: str, data: dict):
     headers = {"Content-Type": "application/json"}
 
     response = requests.post(api_url, json=data, headers=headers)
-    try:
-        jsonresponse = response.json()
-        print(dumps(jsonresponse, indent=4))
-    except Exception as e:
-        print(e)
-        exit(1)
+    print(response.status_code)
+
+    # Display detailed information about the response
+    print("\n--- Response Details ---")
+    print(f"URL: {response.url}")
+    print(f"Status Code: {response.status_code}")
+    print(f"Reason: {response.reason}")
+    print(f"Headers: {dumps(dict(response.headers), indent=4)}")
+    print(f"Elapsed Time: {response.elapsed}")
+    
+    # Display the raw response content
+    print("\n--- Raw Response Content ---")
+    print(response.content)
+
+    # Display the text response (decoded from bytes)
+    print("\n--- Text Response Content ---")
+    print(response.text)
