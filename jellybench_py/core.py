@@ -81,7 +81,6 @@ def obtainSource(
             label = label.format(filename=filename, size=total_size / 1024.0 / 1024)
 
             with open(file_path, "wb") as file:
-                # fa960a6a36cff9fb9df215ded55b57a1ac3285147849ef6be1d8ea63552ffc17
                 # Initialize the progress bar
                 total_chunks = ceil(total_size / 1024)
                 widgets = [
