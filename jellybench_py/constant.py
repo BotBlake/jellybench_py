@@ -4,6 +4,7 @@ from enum import Enum
 
 @dataclass
 class Constants:
+    DEFAULT_OUTPUT_JSON: str = "./output.json"
     DEFAULT_SERVER_URL: str = "https://hwa.jellyfin.org"
 
 
