@@ -448,28 +448,27 @@ def cli() -> None:
         # for i, gpu in enumerate(gpus, 1):
         #     print(f"    | {i}: {gpu['product']}, {gpu['vendor']}")
         # print()
-        gpu_input = None
         valid_indices = [str(x) for x in range(len(gpus) + 1)]
-        while gpu_input not in valid_indices:
-            if gpu_input is not None:
+        while args.gpu_input not in valid_indices:
+            if args.gpu_input is not None:
                 print(
                     "Please select an available GPU by "
                     + "entering its index number into the prompt."
                 )
-            gpu_input = input("Select GPU (0 to disable GPU tests): ")
+            args.gpu_input = input("Select GPU (0 to disable GPU tests): ")
         # print("   _")
         # print("  /")
         # print(" /")
         # print("/")
 
-    gpu_idx = int(gpu_input) - 1
+    gpu_idx = int(args.gpu_input) - 1
 
     # Appends the selected GPU to supported types
-    if gpu_input != 0:
+    if args.gpu_input != 0:
         supported_types.append(gpus[gpu_idx]["vendor"])
 
     # Error if all hardware disabled
-    if gpu_input == 0 and args.disable_cpu:
+    if args.gpu_input == 0 and args.disable_cpu:
         print()
         print("ERROR: All Hardware Disabled")
         input("Press any key to exit")
@@ -572,7 +571,6 @@ def cli() -> None:
 
     with progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets) as prog_bar:
         progress = 0
-        prog_bar.update(progress, status="Starting Benchmark", workers=0, speed=0)
         for file in files:  # File Benchmarking Loop
             ffmpeg_log.set_test_header(file["name"])
             if args.debug_flag:
