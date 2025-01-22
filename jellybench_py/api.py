@@ -111,7 +111,11 @@ def upload(server_url: str, data: dict):
     headers = {"Content-Type": "application/json"}
 
     response = requests.post(api_url, json=data, headers=headers)
-    print(response.status_code)
+    if response.ok:
+        print(" success!")
+    else:
+        print(" Error")
+    print()
 
     # Display detailed information about the response
     print("\n--- Response Details ---")
