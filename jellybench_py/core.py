@@ -272,9 +272,22 @@ def output_json(data, file_path, server_url):
 
 def only_do_upload_flow():
     # this is the main logic flow if the user passes only_do_upload flag
-    data = b''
-    with open(args.output_path, "r") as f:
-        data = f.read()
+    print("Manual Upload. " + styled("USE WITH CAUTION!", [Style.RED]))
+    output_file = args.output_path
+    filename = os.path.basename(output_file)
+    print(f"Uploading \"{filename}\" to \"{args.server_url}\"")
+    if not confirm(default=True):
+        exit()
+    print()
+    if not os.path.exists(output_file):
+        print("Error. The file does not exist")
+        exit()
+    try:
+        with open(output_file, "r") as file:
+            data = json.load(file)
+    except json.JSONDecodeError:
+        print("Error: The file is not a valid JSON.")
+        exit()
     api.upload(args.server_url, data)
     exit()
 
