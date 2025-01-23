@@ -19,3 +19,13 @@ def confirm(message: str = "Continue", default: bool | None = None) -> bool:
         print("Error: invalid input")
 
     return valid_inputs[response]
+
+def get_nvenc_session_limit(driver_version: int) -> int:
+    if driver_version >= 550.0:
+        return 8
+    elif 530.0 <= driver_version < 550.0:
+        return 5
+    elif driver_version <= 530.0:
+        return 3
+    else:
+        return 0

@@ -30,7 +30,7 @@ import requests
 
 from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
-from jellybench_py.util import confirm, styled
+from jellybench_py.util import confirm, get_nvenc_session_limit, styled
 
 
 def obtainSource(
@@ -257,6 +257,19 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
         prog_bar.update(status="Skipped", workers=0, speed=0)
         return False, runs, {}
 
+def check_driver_limit(device: dict):
+    print("|")
+    limit = 0
+    print("| NVIDIA gpu detected:")
+    print("| > Testing selected GPU for driver Limits")
+    if ("configuration" in device) and ("driver" in device["configuration"]):
+        driver_raw = device["configuration"]["driver"]
+        mayor_version = list(driver_raw.split('.')[-2])[-1]
+        minor_version = driver_raw.split('.')[-1]
+        driver_version = float(mayor_version + minor_version)/100
+        limit = get_nvenc_session_limit(driver_version)
+        print(f"| > Your driver ({driver_version}) should only allow {limit} NvEnc sessions")
+        print("|")
 
 def output_json(data, file_path, server_url):
     # Write the data to the JSON file
@@ -493,7 +506,10 @@ def cli() -> None:
 
     # Appends the selected GPU to supported types
     if args.gpu_input != 0:
-        supported_types.append(gpus[gpu_idx]["vendor"])
+        device = gpus[gpu_idx]
+        if device["vendor"] == "nvidia":
+            check_driver_limit(device)
+        supported_types.append(device["vendor"])
 
     # Error if all hardware disabled
     if args.gpu_input == 0 and args.disable_cpu:
