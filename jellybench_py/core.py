@@ -270,9 +270,23 @@ def output_json(data, file_path, server_url):
         # upload to server
         api.upload(server_url, data)
 
+def only_do_upload_flow():
+    # this is the main logic flow if the user passes only_do_upload flag
+    data = b''
+    with open(args.output_path, "r") as f:
+        data = f.read()
+    api.upload(args.server_url, data)
+    exit()
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-U',
+        dest="only_do_upload",
+        action="store_true",
+        help="Skip all tests and upload an existing json output file. Uses the default output path if you do not define --output_path.",
+    )
+
     parser.add_argument(
         "--ffmpeg",
         dest="ffmpeg_path",
@@ -301,7 +315,7 @@ def parse_args():
         "--output_path",
         dest="output_path",
         type=str,
-        default="./output.json",
+        default=Constants.DEFAULT_OUTPUT_JSON,
         help="Path to the output JSON file (default: ./output.json)",
     )
 
@@ -333,13 +347,15 @@ def cli() -> None:
     """
     Python Transcoding Acceleration Benchmark Client made for Jellyfin Hardware Survey
     """
+    global args
     args = parse_args()
-    global debug
-    debug = args.debug_flag
 
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
     print()
+
+    if args.only_do_upload:
+        only_do_upload_flow()
 
     ffmpeg_log.create_log()
 

@@ -75,40 +75,36 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
         input("Press any key to exit")
         exit()
 
-    try:
-        response = requests.get(
-            f"{server_url}/api/v1/TestDataApi?platformId={current_platform}"
-        )
-        if response.status_code == 200:
-            print(" success!")
-            test_data = response.json()
-        elif response.status_code == 429:
-            print(" Error")
-            print(f"ERROR: Server replied with {response.status_code}")
-            ratelimit_time = response.headers["retry-after"]
-            print(f"Ratelimited: Retry in {ratelimit_time}s")
-            exit(1)
-        else:
-            print(" Error")
-            print(
-                styled(
-                    f"ERROR: Server replied with {response.status_code}",
-                    [Style.RED, Style.BOLD],
-                )
-            )
-            input("Press any key to exit")
-            exit()
-    except Exception:
+    response = requests.get(
+        f"{server_url}/api/v1/TestDataApi?platformId={current_platform}"
+    )
+    if response.status_code == 200:
+        print(" success!")
+        test_data = response.json()
+    elif response.status_code == 429:
         print(" Error")
-        print("ERROR: No connection to Server possible")
+        print(f"ERROR: Server replied with {response.status_code}")
+        ratelimit_time = response.headers["retry-after"]
+        print(f"Ratelimited: Retry in {ratelimit_time}s")
+        exit(1)
+    else:
+        print(" Error")
+        print(
+            styled(
+                f"ERROR: Server replied with {response.status_code}",
+                [Style.RED, Style.BOLD],
+            )
+        )
+        input("Press any key to exit")
         exit()
     return valid, test_data
 
 
 def upload(server_url: str, data: dict):
-    print("| Uploading to Server... ", end="")
     api_url = f"{server_url}/api/v1/SubmissionApi"
-    headers = {"Content-Type": "application/json"}
+    print(f"| Uploading to {api_url}... ", end="")
+    
+    headers = {"accept": "text/plain", "Content-Type": "application/json"}
 
     response = requests.post(api_url, json=data, headers=headers)
     if response.ok:
