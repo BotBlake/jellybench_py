@@ -182,3 +182,9 @@ def evaluateRunData(run_data_raw: list) -> dict:
         "avgFPS": avgFPS,
     }
     return run_data_eval
+
+
+def test_command(ffmpeg_cmd):
+    ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
+    raw_worker_data = run_ffmpeg(1, ffmpeg_cmd_list)
+    return raw_worker_data

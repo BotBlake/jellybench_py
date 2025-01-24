@@ -6,6 +6,8 @@ from enum import Enum
 class Constants:
     DEFAULT_OUTPUT_JSON: str = "./output.json"
     DEFAULT_SERVER_URL: str = "https://hwa.jellyfin.org"
+    NVENC_TEST_CMD_BASE: str = "{ffmpeg} -y -hwaccel cuda -hwaccel_output_format cuda -t 50 -hwaccel_device {gpu} -f lavfi -i testsrc "
+    NVENC_TEST_CMD_WORK: str = "-vf hwupload -fps_mode passthrough -c:a copy -c:v h264_nvenc -b:v {bitrate} -f null -"
 
 
 class Style(Enum):
