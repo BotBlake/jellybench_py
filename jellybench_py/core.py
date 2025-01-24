@@ -257,19 +257,29 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
         prog_bar.update(status="Skipped", workers=0, speed=0)
         return False, runs, {}
 
-def check_driver_limit(device: dict):
+def check_driver_limit(device: dict, debug_flag: bool):
     print("|")
     limit = 0
-    print("| NVIDIA gpu detected:")
-    print("| > Testing selected GPU for driver Limits")
+    if debug_flag:
+        print("| NVIDIA gpu detected:")
+        print("| > Testing selected GPU for driver Limits")
+    else:
+        print("Testing driver limit...", end="")
+
     if ("configuration" in device) and ("driver" in device["configuration"]):
         driver_raw = device["configuration"]["driver"]
         mayor_version = list(driver_raw.split('.')[-2])[-1]
         minor_version = driver_raw.split('.')[-1]
         driver_version = float(mayor_version + minor_version)/100
         limit = get_nvenc_session_limit(driver_version)
-        print(f"| > Your driver ({driver_version}) should only allow {limit} NvEnc sessions")
+        if debug_flag:
+            print(f"| > Your driver ({driver_version}) should only allow {limit} NvEnc sessions")
         print("|")
+
+    if limit > 0:
+        if debug_flag:
+            print(f"Testing with {limit+1} workers")
+        
 
 def output_json(data, file_path, server_url):
     # Write the data to the JSON file
@@ -508,7 +518,7 @@ def cli() -> None:
     if args.gpu_input != 0:
         device = gpus[gpu_idx]
         if device["vendor"] == "nvidia":
-            check_driver_limit(device)
+            check_driver_limit(device, args.debug_flag)
         supported_types.append(device["vendor"])
 
     # Error if all hardware disabled
