@@ -260,10 +260,10 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
 
 def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
     def build_test_cmd(worker_ammount: int, ffmpeg_binary: str, gpu_arg) -> str:
-        base_cmd = Constants.NVENC_TEST_CMD_BASE.format(
+        base_cmd = Constants.NVENC_TEST_WINDOWS.BASE_CMD.format(
             ffmpeg=ffmpeg_binary, gpu=gpu_arg
         )
-        worker_base = Constants.NVENC_TEST_CMD_WORK
+        worker_base = Constants.NVENC_TEST_WINDOWS.WORKER_CMD
         worker_commands = []
         for i in range(1, worker_ammount + 1):
             bitrate = f"{i}M"
