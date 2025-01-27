@@ -569,6 +569,7 @@ def cli() -> None:
                     + "entering its index number into the prompt."
                 )
             args.gpu_input = input("Select GPU (0 to disable GPU tests): ")
+        args.gpu_input = int(args.gpu_input)
         # print("   _")
         # print("  /")
         # print(" /")
