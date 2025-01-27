@@ -281,15 +281,28 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
     limit = 0
     print("| NVIDIA gpu detected:")
 
-    if ("configuration" in device) and ("driver" in device["configuration"]):
+    if "configuration" in device and "driver" in device["configuration"]:
         driver_raw = device["configuration"]["driver"]
-        mayor_version = list(driver_raw.split(".")[-2])[-1]
-        minor_version = driver_raw.split(".")[-1]
-        driver_version = float(mayor_version + minor_version) / 100
-        limit = get_nvenc_session_limit(driver_version)
-        print(
-            f"| > Your driver ({driver_version}) should only allow {limit} NvEnc sessions"
-        )
+        try:
+            # Try to parse driver
+            split_driver = driver_raw.split(".")
+            if len(split_driver) < 4:
+                raise ValueError("Driver string does not have enough parts")
+
+            mayor_version = list(split_driver[-2])[-1]
+            minor_version = split_driver[-1]
+
+            if not (mayor_version.isdigit() and minor_version.isdigit()):
+                raise ValueError("Driver string parts are not numeric")
+
+            driver_version = float(mayor_version + minor_version) / 100
+            limit = get_nvenc_session_limit(driver_version)
+            print(
+                f"| > Your driver ({driver_version}) should only allow {limit} NvEnc sessions"
+            )
+        except (IndexError, ValueError) as e:
+            # Handle unparsable driver
+            print(f"| > Failed to parse driver version: {driver_raw}. Error: {e}")
 
     gpu_arg = format_gpu_arg(hwi.platform.system(), device, gpu_idx)
     if limit > 0:
