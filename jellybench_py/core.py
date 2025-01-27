@@ -328,7 +328,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
             "| > Caution: Running benchmarks on a device with driver limitations will considerably increase the runtime!"
         )
         skip_device = confirm(
-            message="| > Do you want to skip GPU tests?: ", default=True
+            message="| > Do you want to skip GPU tests?", default=True
         )
         limited_driver = True
     else:
