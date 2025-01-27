@@ -191,10 +191,9 @@ def test_command(ffmpeg_cmd):
 
     failure_reason = raw_worker_data[1]
     process_output = raw_worker_data[0]
-
-    if failure_reason == "incompatible client key":
+    if failure_reason == "incompatible client key" or failure_reason is None:
         success_pattern = r"Output #\d+, null, to 'pipe:'"
         successful_streams = re.findall(success_pattern, process_output)
         successful_stream_count = len(successful_streams)
-    
-    return successful_stream_count
+
+    return successful_stream_count, failure_reason

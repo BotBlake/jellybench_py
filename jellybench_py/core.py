@@ -260,7 +260,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
 
 def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
     def build_test_cmd(worker_ammount: int, ffmpeg_binary: str, gpu_arg) -> str:
-        if hwi.platform.system == "windows":
+        if hwi.platform.system().lower() == "windows":
             base_cmd = Constants.NVENC_TEST_WINDOWS.BASE_CMD.format(
                 ffmpeg=ffmpeg_binary, gpu=gpu_arg
             )
@@ -315,7 +315,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
 
     skip_device = False
     limited_driver = False
-    successfull_count = worker.test_command(command)
+    successfull_count, failure_reason = worker.test_command(command)
     if successfull_count == worker_ammount:
         print(" success!")
 
@@ -334,6 +334,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
     else:
         print(" Error!")
         print("| > Your GPU is not capable of running NvEnc Streams!")
+        print(f"| > FFmpeg: {failure_reason}")
         print("| > Please run the tool again and disable GPU tests")
         exit()
     print(styled("Done", [Style.GREEN]))
