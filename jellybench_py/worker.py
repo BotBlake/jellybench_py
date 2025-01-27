@@ -186,5 +186,15 @@ def evaluateRunData(run_data_raw: list) -> dict:
 
 def test_command(ffmpeg_cmd):
     ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
+    successful_stream_count = 0
     raw_worker_data = run_ffmpeg(1, ffmpeg_cmd_list)
-    return raw_worker_data
+
+    failure_reason = raw_worker_data[1]
+    process_output = raw_worker_data[0]
+
+    if failure_reason == "incompatible client key":
+        success_pattern = r"Output #\d+, null, to 'pipe:'"
+        successful_streams = re.findall(success_pattern, process_output)
+        successful_stream_count = len(successful_streams)
+    
+    return successful_stream_count

@@ -277,8 +277,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
             worker_commands.append(worker_command)
         full_command = base_cmd + " ".join(worker_commands)
         return full_command
-
-    limit = 0
+    limit = 8 # default driver limit
     print("| NVIDIA gpu detected:")
 
     if "configuration" in device and "driver" in device["configuration"]:
@@ -305,13 +304,27 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
             print(f"| > Failed to parse driver version: {driver_raw}. Error: {e}")
 
     gpu_arg = format_gpu_arg(hwi.platform.system(), device, gpu_idx)
-    if limit > 0:
-        print(f"| > Testing with {limit+1} workers...", end="")
-        command = build_test_cmd(2, ffmpeg_binary, gpu_arg)
-        print()
-        print(worker.test_command(command))
-        print()
-    return "nix"
+    worker_ammount = limit+1
+    print(f"| > Testing with {worker_ammount} workers...", end="")
+    command = build_test_cmd(worker_ammount, ffmpeg_binary, gpu_arg)
+
+    skip_device = False
+    limited_driver = False
+    successfull_count = worker.test_command(command)
+    if successfull_count == worker_ammount:
+        print(" success!")
+
+    elif 0 < successfull_count < worker_ammount:
+        print(styled(" limited!", [Style.BG_RED]))
+        print(f"Your GPU driver does only allow {successfull_count} concurrent NvEnc sessions!")
+        skip_device = confirm(message="Do you want to skip GPU tests?: ", default=True)
+        limited_driver = True
+    else:
+        print(" Error!")
+        print("Your GPU is not capable of running NvEnc Streams!")
+        print("Please run the tool again and disable GPU tests")
+        exit()
+    return limited_driver, skip_device
 
 
 def output_json(data, file_path, server_url):
@@ -620,7 +633,9 @@ def cli() -> None:
     # Test for NvEnc Limits
     if gpu and gpu["vendor"] == "nvidia":
         print(styled("Testing for driver limits:", [Style.BOLD]))
-        test_cmd = check_driver_limit(gpu, ffmpeg_binary, gpu_idx)
+        limited_driver, skip_device = check_driver_limit(gpu, ffmpeg_binary, gpu_idx)
+        if limited_driver:
+           print("Skipping is not yet implemented. Please cancel manualy!")
 
     # Count ammount of tests required to do:
     test_arg_count = 0
