@@ -277,35 +277,36 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
             worker_commands.append(worker_command)
         full_command = base_cmd + " ".join(worker_commands)
         return full_command
-    limit = 8 # default driver limit
-    print("| NVIDIA gpu detected:")
+
+    def parse_driver(driver_raw: str) -> int:
+        split_driver = driver_raw.split(".")
+        if len(split_driver) < 4:
+            return -1
+
+        major_version = list(split_driver[-2])[-1]
+        minor_version = split_driver[-1]
+
+        if not (major_version.isdigit() and minor_version.isdigit()):
+            return -1
+
+        driver_version = float(major_version + minor_version) / 100
+        limit = get_nvenc_session_limit(driver_version)
+        print(
+            f"| Your driver ({driver_version}) should only allow {limit} NvEnc sessions"
+        )
+        return limit
+
+    limit = 8  # default driver limit
 
     if "configuration" in device and "driver" in device["configuration"]:
         driver_raw = device["configuration"]["driver"]
-        try:
-            # Try to parse driver
-            split_driver = driver_raw.split(".")
-            if len(split_driver) < 4:
-                raise ValueError("Driver string does not have enough parts")
-
-            mayor_version = list(split_driver[-2])[-1]
-            minor_version = split_driver[-1]
-
-            if not (mayor_version.isdigit() and minor_version.isdigit()):
-                raise ValueError("Driver string parts are not numeric")
-
-            driver_version = float(mayor_version + minor_version) / 100
-            limit = get_nvenc_session_limit(driver_version)
-            print(
-                f"| > Your driver ({driver_version}) should only allow {limit} NvEnc sessions"
-            )
-        except (IndexError, ValueError) as e:
-            # Handle unparsable driver
-            print(f"| > Failed to parse driver version: {driver_raw}. Error: {e}")
+        driver_limit = parse_driver(driver_raw)
+        if 0 < driver_limit:
+            limit = driver_limit
 
     gpu_arg = format_gpu_arg(hwi.platform.system(), device, gpu_idx)
-    worker_ammount = limit+1
-    print(f"| > Testing with {worker_ammount} workers...", end="")
+    worker_ammount = limit + 1
+    print(f"| Testing with {worker_ammount} workers...", end="")
     command = build_test_cmd(worker_ammount, ffmpeg_binary, gpu_arg)
 
     skip_device = False
@@ -316,14 +317,23 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
 
     elif 0 < successfull_count < worker_ammount:
         print(styled(" limited!", [Style.BG_RED]))
-        print(f"Your GPU driver does only allow {successfull_count} concurrent NvEnc sessions!")
-        skip_device = confirm(message="Do you want to skip GPU tests?: ", default=True)
+        print(
+            f"| > Your GPU driver does only allow {successfull_count} concurrent NvEnc sessions!"
+        )
+        print(
+            "| > Caution: Running benchmarks on a device with driver limitations will considerably increase the runtime!"
+        )
+        skip_device = confirm(
+            message="| > Do you want to skip GPU tests?: ", default=True
+        )
         limited_driver = True
     else:
         print(" Error!")
-        print("Your GPU is not capable of running NvEnc Streams!")
-        print("Please run the tool again and disable GPU tests")
+        print("| > Your GPU is not capable of running NvEnc Streams!")
+        print("| > Please run the tool again and disable GPU tests")
         exit()
+    print(styled("Done", [Style.GREEN]))
+    print()
     return limited_driver, skip_device
 
 
@@ -632,10 +642,10 @@ def cli() -> None:
 
     # Test for NvEnc Limits
     if gpu and gpu["vendor"] == "nvidia":
-        print(styled("Testing for driver limits:", [Style.BOLD]))
+        print(styled("Testing for driver limits: ", [Style.BOLD]) + "(NVIDIA)")
         limited_driver, skip_device = check_driver_limit(gpu, ffmpeg_binary, gpu_idx)
-        if limited_driver:
-           print("Skipping is not yet implemented. Please cancel manualy!")
+        if skip_device:
+            supported_types.remove("nvidia")
 
     # Count ammount of tests required to do:
     test_arg_count = 0
