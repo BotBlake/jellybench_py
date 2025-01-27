@@ -280,10 +280,14 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
 
     def parse_driver(driver_raw: str) -> int:
         split_driver = driver_raw.split(".")
-        if len(split_driver) < 4:
+        if len(split_driver) != 4:
             return -1
 
-        major_version = list(split_driver[-2])[-1]
+        major_version = list(split_driver[-2])
+        if 0 < len(major_version):
+            major_version = major_version[-1]
+        else:
+            return -1
         minor_version = split_driver[-1]
 
         if not (major_version.isdigit() and minor_version.isdigit()):
