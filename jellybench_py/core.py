@@ -260,6 +260,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
 
 def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
     def build_test_cmd(worker_ammount: int, ffmpeg_binary: str, gpu_arg) -> str:
+        # Build an ffmpeg command to test {n}-concurrent NvEnc Streams
         if hwi.platform.system().lower() == "windows":
             base_cmd = Constants.NVENC_TEST_WINDOWS.BASE_CMD.format(
                 ffmpeg=ffmpeg_binary, gpu=gpu_arg
@@ -279,6 +280,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
         return full_command
 
     def parse_driver(driver_raw: str) -> int:
+        # parse windows specific driver output into NVIDIA Version (e.g. 32.0.15.6603 --> 566.03)
         split_driver = driver_raw.split(".")
         if len(split_driver) != 4:
             return -1
