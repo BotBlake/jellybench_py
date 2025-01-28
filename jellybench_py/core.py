@@ -575,6 +575,8 @@ def cli() -> None:
         # print("  /")
         # print(" /")
         # print("/")
+    elif len(gpus) == 1 and args.gpu_input is None:
+        args.gpu_input = 1
     gpu = None
     gpu_idx = int(args.gpu_input) - 1
 
