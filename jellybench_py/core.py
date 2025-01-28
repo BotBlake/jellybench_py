@@ -315,14 +315,14 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
 
     skip_device = False
     limited_driver = False
-    successfull_count, failure_reason = worker.test_command(command)
-    if successfull_count == worker_ammount:
+    successful_count, failure_reason = worker.test_command(command)
+    if successful_count == worker_ammount:
         print(" success!")
 
-    elif 0 < successfull_count < worker_ammount:
+    elif 0 < successful_count < worker_ammount:
         print(styled(" limited!", [Style.BG_RED]))
         print(
-            f"| > Your GPU driver does only allow {successfull_count} concurrent NvEnc sessions!"
+            f"| > Your GPU driver does only allow {successful_count} concurrent NvEnc sessions!"
         )
         print(
             "| > Caution: Running benchmarks on a device with driver limitations will considerably increase the runtime!"
