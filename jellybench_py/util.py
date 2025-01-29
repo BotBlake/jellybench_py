@@ -20,6 +20,7 @@ def confirm(message: str = "Continue", default: bool | None = None) -> bool:
 
     return valid_inputs[response]
 
+
 def get_nvenc_session_limit(driver_version: int) -> int:
     if driver_version >= 550.0:
         return 8

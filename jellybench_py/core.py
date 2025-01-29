@@ -174,16 +174,19 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     last_speed = -0.5  # to Assure first worker always has the required difference
     formatted_last_speed = "00.00"
     failure_reason = []
-    external_limited = False # Flag to save if run is being limited by external factors (eg. driver)
+    external_limited = (
+        False  # Flag to save if run is being limited by external factors (eg. driver)
+    )
     if debug_flag:
         print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
-        
         if total_workers > limit:
             total_workers = limit
             external_limited = True
             if debug_flag:
-                print(f"> > > > External limit hit, reducing workers to {total_workers}")
+                print(
+                    f"> > > > External limit hit, reducing workers to {total_workers}"
+                )
 
         if not debug_flag:
             prog_bar.update(
@@ -249,17 +252,16 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
             formatted_last_speed = f"{last_speed:05.2f}"
             if debug_flag:
                 print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
-            
+
             # external limit hit
             if external_limited:
                 if debug_flag:
-                    print(f"> > > > > External limit hit, ending run")
+                    print("> > > > > External limit hit, ending run")
 
                 failure_reason.append("limited")
                 last_speed = output[1]["speed"]
                 formatted_last_speed = f"{last_speed:05.2f}"
                 run = False
-
 
     if debug_flag:
         print(f"> > > > Failed: {failure_reason}")
