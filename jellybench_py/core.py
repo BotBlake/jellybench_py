@@ -167,16 +167,24 @@ def format_gpu_arg(system_os, gpu, gpu_idx):
         return gpu["businfo"].replace("@", "-")
 
 
-def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
+def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     runs = []
     total_workers = 1
     run = True
     last_speed = -0.5  # to Assure first worker always has the required difference
     formatted_last_speed = "00.00"
     failure_reason = []
+    external_limited = False # Flag to save if run is being limited by external factors (eg. driver)
     if debug_flag:
         print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
+        
+        if total_workers > limit:
+            total_workers = limit
+            external_limited = True
+            if debug_flag:
+                print(f"> > > > External limit hit, reducing workers to {total_workers}")
+
         if not debug_flag:
             prog_bar.update(
                 status="Testing",
@@ -206,6 +214,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
                 failure_reason.append("limited")
             else:
                 failure_reason.append("performance")
+
         # Scaleback when fail on 1<workers (NvEnc Limit) or on Speed<1 with 1<last added workers or on last_Speed = Scaleback
         elif (
             (total_workers > 1 and output[0])
@@ -240,6 +249,18 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
             formatted_last_speed = f"{last_speed:05.2f}"
             if debug_flag:
                 print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
+            
+            # external limit hit
+            if external_limited:
+                if debug_flag:
+                    print(f"> > > > > External limit hit, ending run")
+
+                failure_reason.append("limited")
+                last_speed = output[1]["speed"]
+                formatted_last_speed = f"{last_speed:05.2f}"
+                run = False
+
+
     if debug_flag:
         print(f"> > > > Failed: {failure_reason}")
     if len(runs) > 0:
@@ -316,7 +337,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
     command = build_test_cmd(worker_ammount, ffmpeg_binary, gpu_arg)
 
     skip_device = False
-    limited_driver = False
+    limited_driver = 0
     successful_count, failure_reason = worker.test_command(command)
     if successful_count == worker_ammount:
         print(" success!")
@@ -332,7 +353,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
         skip_device = confirm(
             message="| > Do you want to skip GPU tests?", default=True
         )
-        limited_driver = True
+        limited_driver = limit
     else:
         print(" Error!")
         print("| > Your GPU is not capable of running NvEnc Streams!")
@@ -729,8 +750,13 @@ def cli() -> None:
                         test_cmd = f"{ffmpeg_binary} {arguments}"
                         ffmpeg_log.set_test_args(test_cmd)
 
+                        # cap nvidia limit
+                        limit = 0
+                        if command["type"] == "nvidia":
+                            limit = limited_driver
+
                         valid, runs, result = benchmark(
-                            test_cmd, args.debug_flag, prog_bar
+                            test_cmd, args.debug_flag, prog_bar, limit=limit
                         )
                         if not args.debug_flag:
                             progress += 1
