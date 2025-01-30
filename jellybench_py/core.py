@@ -180,7 +180,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     if debug_flag:
         print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
-        if total_workers > limit:
+        if limit != 0 and total_workers > limit:
             total_workers = limit
             external_limited = True
             if debug_flag:
