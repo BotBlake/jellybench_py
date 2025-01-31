@@ -182,3 +182,19 @@ def evaluateRunData(run_data_raw: list) -> dict:
         "avgFPS": avgFPS,
     }
     return run_data_eval
+
+
+def test_command(ffmpeg_cmd):
+    ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
+    successful_stream_count = 0
+    raw_worker_data = run_ffmpeg(1, ffmpeg_cmd_list)
+
+    failure_reason = raw_worker_data[1]
+    process_output = raw_worker_data[0]
+    nvenc_limit_reasons = ["incompatible client key", "out of memory"]
+    if failure_reason in nvenc_limit_reasons or failure_reason is None:
+        success_pattern = r"Output #\d+, null, to 'pipe:'"
+        successful_streams = re.findall(success_pattern, process_output)
+        successful_stream_count = len(successful_streams)
+
+    return successful_stream_count, failure_reason

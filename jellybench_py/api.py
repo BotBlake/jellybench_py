@@ -103,7 +103,7 @@ def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple
 def upload(server_url: str, data: dict):
     api_url = f"{server_url}/api/v1/SubmissionApi"
     print(f"| Uploading to {server_url}... ", end="")
-    
+
     headers = {"accept": "text/plain", "Content-Type": "application/json"}
 
     response = requests.post(api_url, json=data, headers=headers)
@@ -120,7 +120,7 @@ def upload(server_url: str, data: dict):
     print(f"Reason: {response.reason}")
     print(f"Headers: {dumps(dict(response.headers), indent=4)}")
     print(f"Elapsed Time: {response.elapsed}")
-    
+
     # Display the raw response content
     print("\n--- Raw Response Content ---")
     print(response.content)

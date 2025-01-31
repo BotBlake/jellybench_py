@@ -30,7 +30,7 @@ import requests
 
 from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
-from jellybench_py.util import confirm, styled
+from jellybench_py.util import confirm, get_nvenc_session_limit, styled
 
 
 def obtainSource(
@@ -167,16 +167,27 @@ def format_gpu_arg(system_os, gpu, gpu_idx):
         return gpu["businfo"].replace("@", "-")
 
 
-def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
+def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     runs = []
     total_workers = 1
     run = True
     last_speed = -0.5  # to Assure first worker always has the required difference
     formatted_last_speed = "00.00"
     failure_reason = []
+    external_limited = (
+        False  # Flag to save if run is being limited by external factors (eg. driver)
+    )
     if debug_flag:
         print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
+        if limit != 0 and total_workers > limit:
+            total_workers = limit
+            external_limited = True
+            if debug_flag:
+                print(
+                    f"> > > > External limit hit, reducing workers to {total_workers}"
+                )
+
         if not debug_flag:
             prog_bar.update(
                 status="Testing",
@@ -206,6 +217,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
                 failure_reason.append("limited")
             else:
                 failure_reason.append("performance")
+
         # Scaleback when fail on 1<workers (NvEnc Limit) or on Speed<1 with 1<last added workers or on last_Speed = Scaleback
         elif (
             (total_workers > 1 and output[0])
@@ -240,6 +252,17 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
             formatted_last_speed = f"{last_speed:05.2f}"
             if debug_flag:
                 print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
+
+            # external limit hit
+            if external_limited:
+                if debug_flag:
+                    print("> > > > > External limit hit, ending run")
+
+                failure_reason.append("limited")
+                last_speed = output[1]["speed"]
+                formatted_last_speed = f"{last_speed:05.2f}"
+                run = False
+
     if debug_flag:
         print(f"> > > > Failed: {failure_reason}")
     if len(runs) > 0:
@@ -258,6 +281,89 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar) -> tuple:
         return False, runs, {}
 
 
+def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
+    def build_test_cmd(worker_ammount: int, ffmpeg_binary: str, gpu_arg) -> str:
+        # Build an ffmpeg command to test {n}-concurrent NvEnc Streams
+        if hwi.platform.system().lower() == "windows":
+            base_cmd = Constants.NVENC_TEST_WINDOWS.BASE_CMD.format(
+                ffmpeg=ffmpeg_binary, gpu=gpu_arg
+            )
+            worker_base = Constants.NVENC_TEST_WINDOWS.WORKER_CMD
+        else:
+            base_cmd = Constants.NVENC_TEST_LINUX.BASE_CMD.format(
+                ffmpeg=ffmpeg_binary, gpu=gpu_arg
+            )
+            worker_base = Constants.NVENC_TEST_LINUX.WORKER_CMD
+        worker_commands = []
+        for i in range(1, worker_ammount + 1):
+            bitrate = f"{i}M"
+            worker_command = worker_base.format(bitrate=bitrate)
+            worker_commands.append(worker_command)
+        full_command = base_cmd + " ".join(worker_commands)
+        return full_command
+
+    def parse_driver(driver_raw: str) -> int:
+        # parse windows specific driver output into NVIDIA Version (e.g. 32.0.15.6603 --> 566.03)
+        split_driver = driver_raw.split(".")
+        if len(split_driver) != 4:
+            return -1
+
+        major_version = list(split_driver[-2])
+        if 0 < len(major_version):
+            major_version = major_version[-1]
+        else:
+            return -1
+        minor_version = split_driver[-1]
+
+        if not (major_version.isdigit() and minor_version.isdigit()):
+            return -1
+
+        driver_version = float(major_version + minor_version) / 100
+        limit = get_nvenc_session_limit(driver_version)
+        print(
+            f"| Your driver ({driver_version}) should only allow {limit} NvEnc sessions"
+        )
+        return limit
+
+    limit = 8  # default driver limit
+
+    if "configuration" in device and "driver" in device["configuration"]:
+        driver_raw = device["configuration"]["driver"]
+        driver_limit = parse_driver(driver_raw)
+        if 0 < driver_limit:
+            limit = driver_limit
+
+    gpu_arg = format_gpu_arg(hwi.platform.system(), device, gpu_idx)
+    worker_ammount = limit + 1
+    print(f"| Testing with {worker_ammount} workers...", end="")
+    command = build_test_cmd(worker_ammount, ffmpeg_binary, gpu_arg)
+
+    skip_device = False
+    limited_driver = 0
+    successful_count, failure_reason = worker.test_command(command)
+    if successful_count == worker_ammount:
+        print(" success!")
+
+    elif 0 < successful_count < worker_ammount:
+        print(styled(" limited!", [Style.BG_RED]))
+        print(
+            f"| > Your GPU driver does only allow {successful_count} concurrent NvEnc sessions!"
+        )
+        skip_device = confirm(
+            message="| > Do you want to skip GPU tests?", default=True
+        )
+        limited_driver = limit
+    else:
+        print(" Error!")
+        print("| > Your GPU is not capable of running NvEnc Streams!")
+        print(f"| > FFmpeg: {failure_reason}")
+        print("| > Please run the tool again and disable GPU tests")
+        exit()
+    print(styled("Done", [Style.GREEN]))
+    print()
+    return limited_driver, skip_device
+
+
 def output_json(data, file_path, server_url):
     # Write the data to the JSON file
     if file_path:
@@ -270,12 +376,13 @@ def output_json(data, file_path, server_url):
         # upload to server
         api.upload(server_url, data)
 
+
 def only_do_upload_flow():
     # this is the main logic flow if the user passes only_do_upload flag
     print("Manual Upload. " + styled("USE WITH CAUTION!", [Style.RED]))
     output_file = args.output_path
     filename = os.path.basename(output_file)
-    print(f"Uploading \"{filename}\" to \"{args.server_url}\"")
+    print(f'Uploading "{filename}" to "{args.server_url}"')
     if not confirm(default=True):
         exit()
     print()
@@ -291,10 +398,11 @@ def only_do_upload_flow():
     api.upload(args.server_url, data)
     exit()
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-U',
+        "-U",
         dest="only_do_upload",
         action="store_true",
         help="Skip all tests and upload an existing json output file. Uses the default output path if you do not define --output_path.",
@@ -484,16 +592,23 @@ def cli() -> None:
                     + "entering its index number into the prompt."
                 )
             args.gpu_input = input("Select GPU (0 to disable GPU tests): ")
+        args.gpu_input = int(args.gpu_input)
         # print("   _")
         # print("  /")
         # print(" /")
         # print("/")
+    elif len(gpus) == 1 and args.gpu_input is None:
+        args.gpu_input = 1
+    elif len(gpus) == 0:
+        args.gpu_input = 0
 
+    gpu = None
     gpu_idx = int(args.gpu_input) - 1
 
     # Appends the selected GPU to supported types
     if args.gpu_input != 0:
-        supported_types.append(gpus[gpu_idx]["vendor"])
+        gpu = gpus[gpu_idx]
+        supported_types.append(gpu["vendor"])
 
     # Error if all hardware disabled
     if args.gpu_input == 0 and args.disable_cpu:
@@ -557,6 +672,13 @@ def cli() -> None:
             exit()
     print(styled("Done", [Style.GREEN]))
     print()
+
+    # Test for NvEnc Limits
+    if gpu and gpu["vendor"] == "nvidia":
+        print(styled("Testing for driver limits: ", [Style.BOLD]) + "(NVIDIA)")
+        limited_driver, skip_device = check_driver_limit(gpu, ffmpeg_binary, gpu_idx)
+        if skip_device:
+            supported_types.remove("nvidia")
 
     # Count ammount of tests required to do:
     test_arg_count = 0
@@ -622,15 +744,18 @@ def cli() -> None:
                         arguments = command["args"]
                         arguments = arguments.format(
                             video_file=current_file,
-                            gpu=format_gpu_arg(
-                                hwi.platform.system(), gpus[gpu_idx], gpu_idx
-                            ),
+                            gpu=format_gpu_arg(hwi.platform.system(), gpu, gpu_idx),
                         )
                         test_cmd = f"{ffmpeg_binary} {arguments}"
                         ffmpeg_log.set_test_args(test_cmd)
 
+                        # cap nvidia limit
+                        limit = 0
+                        if command["type"] == "nvidia":
+                            limit = limited_driver
+
                         valid, runs, result = benchmark(
-                            test_cmd, args.debug_flag, prog_bar
+                            test_cmd, args.debug_flag, prog_bar, limit=limit
                         )
                         if not args.debug_flag:
                             progress += 1

@@ -3,9 +3,22 @@ from enum import Enum
 
 
 @dataclass
+class CommandConfig:
+    BASE_CMD: str
+    WORKER_CMD: str
+
+
 class Constants:
     DEFAULT_OUTPUT_JSON: str = "./output.json"
     DEFAULT_SERVER_URL: str = "https://hwa.jellyfin.org"
+    NVENC_TEST_WINDOWS = CommandConfig(
+        BASE_CMD="{ffmpeg} -y -hwaccel cuda -hwaccel_output_format cuda -t 50 -hwaccel_device {gpu} -f lavfi -i testsrc ",
+        WORKER_CMD="-vf hwupload -fps_mode passthrough -c:a copy -c:v h264_nvenc -b:v {bitrate} -f null -",
+    )
+    NVENC_TEST_LINUX = CommandConfig(
+        BASE_CMD="{ffmpeg} -y -vsync 0 -hwaccel cuda -hwaccel_output_format cuda  -t 50 -hwaccel_device {gpu} -f lavfi -i testsrc ",
+        WORKER_CMD="-vf hwupload -c:a copy -c:v h264_nvenc -b:v {bitrate} -f null -",
+    )
 
 
 class Style(Enum):
