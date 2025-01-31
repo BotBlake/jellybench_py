@@ -349,9 +349,6 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
         print(
             f"| > Your GPU driver does only allow {successful_count} concurrent NvEnc sessions!"
         )
-        print(
-            "| > Caution: Running benchmarks on a device with driver limitations will considerably increase the runtime!"
-        )
         skip_device = confirm(
             message="| > Do you want to skip GPU tests?", default=True
         )

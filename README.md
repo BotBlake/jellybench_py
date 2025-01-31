@@ -73,8 +73,3 @@ _During development jellybench_py may require you to set up specific things manu
 ## Current Issues
 You will find a List of currently known issues below.
 These will change over time, so please ensure you check this section regularly for any changes.
-
-### NvEnc Driver Limitations
-NVIDIA imposes a limit on the maximum number of NvEnc streams for consumer-grade GPUs through the driver. This limitation currently leads to significantly increased runtimes on affected devices.  
-> [!CAUTION]  
-> If you are using an NVIDIA consumer-grade GPU and have not implemented a workaround for this limitation, it is recommended to avoid testing on such devices. Runtimes will be significantly extended!
