@@ -28,7 +28,7 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import progressbar
 import requests
 
-from jellybench_py import api, ffmpeg_log, hwi, worker
+from jellybench_py import api, ffmpeg_log, hwi, log_creator, worker
 from jellybench_py.constant import Constants, Style
 from jellybench_py.util import confirm, get_nvenc_session_limit, styled
 
@@ -468,12 +468,17 @@ def cli() -> None:
     """
     Python Transcoding Acceleration Benchmark Client made for Jellyfin Hardware Survey
     """
+    jellybench_logger = log_creator.Logger(Constants.JELLYBENCH_LOG_CONFIG)
+    jellybench_logger.start()
+
     global args
     args = parse_args()
 
+    jellybench_logger.info("Welcome to jellybench_py Cheeseburger Edition")
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
     print()
+    jellybench_logger.stop()
 
     if args.only_do_upload:
         only_do_upload_flow()

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from jellybench_py import log_creator
+
 
 @dataclass
 class CommandConfig:
@@ -18,6 +20,9 @@ class Constants:
     NVENC_TEST_LINUX = CommandConfig(
         BASE_CMD="{ffmpeg} -y -vsync 0 -hwaccel cuda -hwaccel_output_format cuda  -t 50 -hwaccel_device {gpu} -f lavfi -i testsrc ",
         WORKER_CMD="-vf hwupload -c:a copy -c:v h264_nvenc -b:v {bitrate} -f null -",
+    )
+    JELLYBENCH_LOG_CONFIG = log_creator.LoggerConfig(
+        name="jellybench_logger", level=log_creator.logging.INFO, file="jellybench.log"
     )
 
 
