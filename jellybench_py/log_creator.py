@@ -2,22 +2,25 @@ import logging
 import logging.handlers
 import queue
 
+from jellybench_py.constant import Style
+from jellybench_py.util import styled
+
 
 class ColorizedFormatter(logging.Formatter):
-    RESET_CODE = "\033[0m"
-    COLOR_CODES = {
-        "DEBUG": "\033[36m",  # Cyan
-        "INFO": "\033[32m",  # Green
-        "WARNING": "\033[33m",  # Yellow
-        "ERROR": "\033[31m",  # Red
-        "CRITICAL": "\033[41m",  # Red Background
+    LEVEL_STYLES = {
+        "DEBUG": [Style.CYAN],
+        "INFO": [Style.GREEN],
+        "WARNING": [Style.YELLOW],
+        "ERROR": [Style.RED],
+        "CRITICAL": [Style.BG_RED],
     }
 
-    def format(self, record):
-        level_name = record.levelname
-        color = self.COLOR_CODES.get(level_name, self.RESET_CODE)
+    def format(self, record: logging.LogRecord) -> str:
         formatted_message = super().format(record)
-        return f"{color}{formatted_message}{self.RESET_CODE}"
+        styles = self.LEVEL_STYLES.get(record.levelname, [])
+        if styles:
+            return styled(formatted_message, styles)
+        return formatted_message
 
 
 class LoggerConfig:
