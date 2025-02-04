@@ -178,6 +178,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         False  # Flag to save if run is being limited by external factors (eg. driver)
     )
     if debug_flag:
+        print(f"> > > CLI: {ffmpeg_cmd}")
         print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
         if limit != 0 and total_workers > limit:
