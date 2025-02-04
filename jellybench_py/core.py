@@ -108,6 +108,14 @@ def obtainSource(
         except requests.exceptions.RequestException:
             return False, "Request error"  # Network issues or invalid URL
 
+    if args.debug_flag:
+        print(f'> Downloading file...')
+        print(f'> > Source URL: {source_url}')
+        print(f'> > Target Path: {target_path}')
+        print(f'> > Server Provided Hashes:')
+        for i, j in enumerate(hash_dict):
+            print(f'> > > {j["type"]}: {j["hash"]}')
+
     hash_algorithm, source_hash, hash_message = match_hash(hash_dict)
 
     target_path = os.path.realpath(target_path)  # Relative Path!
