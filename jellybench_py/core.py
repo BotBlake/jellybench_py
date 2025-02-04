@@ -531,6 +531,12 @@ def cli() -> None:
         platforms = api.getPlatform(
             args.server_url
         )  # obtain list of (supported) Platforms + ID's
+
+        if args.debug_flag:
+            print("> Supported Platforms:")
+            for i in platforms:
+                print(f"> > {i}")
+
         platform_id = hwi.get_platform_id(platforms)
 
     print("| Obtaining System Information...", end="")
