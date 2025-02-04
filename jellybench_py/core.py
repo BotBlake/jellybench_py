@@ -461,6 +461,15 @@ def parse_args():
         action="store_true",
         help="Enable additional debug output",
     )
+
+    parser.add_argument(
+        "--override-platform",
+        dest="platform_override",
+        type=str,
+        required=False,
+        help="Override the detected system platform value when in debug mode"
+    )
+
     return parser.parse_args()
 
 
@@ -537,7 +546,11 @@ def cli() -> None:
             for i in platforms:
                 print(f"> > {i}")
 
-        platform_id = hwi.get_platform_id(platforms)
+        if args.debug_flag and args.platform_override:
+            platform_id = hwi.get_platform_id(platforms, override=args.platform_override)
+            print(f"> Overriding platform with \"{args.platform_override}\" ")
+        else:
+            platform_id = hwi.get_platform_id(platforms)
 
     print("| Obtaining System Information...", end="")
     system_info = hwi.get_system_info()
@@ -624,7 +637,6 @@ def cli() -> None:
         exit()
 
     # Stop Hardware Selection logic
-
     valid, server_data = api.getTestData(platform_id, platforms, args.server_url)
     if not valid:
         print(f"Cancelled: {server_data}")
