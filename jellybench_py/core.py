@@ -147,6 +147,10 @@ def obtainSource(
     # print(f"CHECKSUM: {downloaded_checksum}")
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         return True, file_path  # Checksum valid
+    elif args.debug_flag and args.ignore_hash:
+        print(f'> Checksum failed, expecting: {source_hash}')
+        print(f'> Ignoring invalid checksum of: {downloaded_checksum}')
+        return True, file_path
     else:
         # os.remove(file_path)  # Delete file if checksum doesn't match
         print(f"\nSource hash is {source_hash} but we got {downloaded_checksum}.")
@@ -468,6 +472,13 @@ def parse_args():
         dest="debug_flag",
         action="store_true",
         help="Enable additional debug output",
+    )
+
+    parser.add_argument(
+        "--ignore-hash",
+        dest="ignore_hash",
+        action="store_true",
+        help="Ignore file hash"
     )
     return parser.parse_args()
 
