@@ -673,6 +673,10 @@ def cli() -> None:
         input("Press any key to exit")
         exit()
 
+    print_debug("> Supported Platforms:")
+    for i in platforms:
+        print_debug(f"> > {i}")
+
     platform_id = hwi.get_platform_id(platforms)
 
     used_platform = next(
