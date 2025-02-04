@@ -224,6 +224,9 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     external_limited = (
         False  # Flag to save if run is being limited by external factors (eg. driver)
     )
+    if debug_flag:
+        print_debug(f"> > > ffmpeg command: {ffmpeg_cmd}")
+        
     while run:
         assert max_pass < min_fail
 
