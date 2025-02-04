@@ -109,10 +109,10 @@ def obtainSource(
             return False, "Request error"  # Network issues or invalid URL
 
     if args.debug_flag:
-        print(f'> Downloading file...')
+        print('> Downloading file...')
         print(f'> > Source URL: {source_url}')
         print(f'> > Target Path: {target_path}')
-        print(f'> > Server Provided Hashes:')
+        print('> > Server Provided Hashes:')
         for i, j in enumerate(hash_dict):
             print(f'> > > {j["type"]}: {j["hash"]}')
 
