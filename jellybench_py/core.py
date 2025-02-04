@@ -590,6 +590,15 @@ def parse_args():
         action="store_true",
         help=argparse.SUPPRESS,
     )
+
+    parser.add_argument(
+        "--override-platform",
+        dest="platform_override",
+        type=str,
+        required=False,
+        help="Override the detected system platform value when in debug mode"
+    )
+
     return parser.parse_args()
 
 
@@ -677,7 +686,11 @@ def cli() -> None:
     for i in platforms:
         print_debug(f"> > {i}")
 
-    platform_id = hwi.get_platform_id(platforms)
+        if args.debug_flag and args.platform_override:
+            platform_id = hwi.get_platform_id(platforms, override=args.platform_override)
+            print_debug(f"> Overriding platform with \"{args.platform_override}\" ")
+        else:
+            platform_id = hwi.get_platform_id(platforms)
 
     used_platform = next(
         (item for item in platforms if item["id"] == platform_id), None
@@ -787,7 +800,7 @@ def cli() -> None:
         server_data = api_client.get_test_data(platform_id)
     except ApiError as e:
         print(f"Cancelled: {e}")
-        main_log.error(f"Unabled to get TestData {e}")
+        main_log.error(f"Unable to get TestData {e}")
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
