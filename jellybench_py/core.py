@@ -109,10 +109,10 @@ def obtainSource(
             return False, "Request error"  # Network issues or invalid URL
 
     if args.debug_flag:
-        print('> Downloading file...')
-        print(f'> > Source URL: {source_url}')
-        print(f'> > Target Path: {target_path}')
-        print('> > Server Provided Hashes:')
+        print("> Downloading file...")
+        print(f"> > Source URL: {source_url}")
+        print(f"> > Target Path: {target_path}")
+        print("> > Server Provided Hashes:")
         for i, j in enumerate(hash_dict):
             print(f'> > > {j["type"]}: {j["hash"]}')
 
@@ -148,8 +148,8 @@ def obtainSource(
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         return True, file_path  # Checksum valid
     elif args.debug_flag and args.ignore_hash:
-        print(f'> Checksum failed, expecting: {source_hash}')
-        print(f'> Ignoring invalid checksum of: {downloaded_checksum}')
+        print(f"> Checksum failed, expecting: {source_hash}")
+        print(f"> Ignoring invalid checksum of: {downloaded_checksum}")
         return True, file_path
     else:
         # os.remove(file_path)  # Delete file if checksum doesn't match
@@ -478,7 +478,7 @@ def parse_args():
         "--ignore-hash",
         dest="ignore_hash",
         action="store_true",
-        help="Ignore file hash"
+        help="Ignore file hash",
     )
     return parser.parse_args()
 
