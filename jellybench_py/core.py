@@ -684,13 +684,13 @@ def cli() -> None:
 
     print_debug("> Supported Platforms:")
     for i in platforms:
-        print_debug(f"> > {i}")
+        print_debug(f'"> > {i["display_name"]}" - {i["type"]} - {i["architecture"]}')
 
         if args.debug_flag and args.platform_override:
             platform_id = hwi.get_platform_id(
                 platforms, override=args.platform_override
             )
-            print_debug(f'> Overriding platform with "{args.platform_override}" ')
+            print_debug(f'> Overriding platform type with "{args.platform_override}" ')
         else:
             platform_id = hwi.get_platform_id(platforms)
 
