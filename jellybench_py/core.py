@@ -648,7 +648,7 @@ def cli() -> None:
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
     print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg" -', end="")
+    print('| Searching local "ffmpeg"...')
     ffmpeg_download = obtainSource(
         args.ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
