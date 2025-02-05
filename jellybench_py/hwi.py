@@ -198,14 +198,14 @@ def get_gpu_info() -> list:
                 else gpu["spdisplays_vendor"]
             )
             entry = {
-                "id": i,
+                "id": str(i),
                 "class": "display",
                 "description": gpu["sppci_device_type"],
                 "product": gpu["sppci_model"],
                 "vendor": vendor,
-                "physid": "",
-                "businfo": gpu["sppci_bus"],
-                "configuration": gpu["spdisplays_mtlgpufamilysupport"],
+                # "physid": "",
+                # "businfo": gpu["sppci_bus"],
+                # "configuration": gpu["spdisplays_mtlgpufamilysupport"],
             }
 
             gpu_elements.append(entry)
@@ -296,7 +296,7 @@ def get_ram_info() -> list:
             raw = sp["SPMemoryDataType"][i]
             cap_info = raw["SPMemoryDataType"].split()
             entry = {
-                "id": i,
+                "id": str(i),
                 "class": "memory",
                 "units": cap_info[1].lower(),
                 "size": int(cap_info[0]),
