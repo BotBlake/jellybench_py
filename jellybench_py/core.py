@@ -30,7 +30,7 @@ import requests
 
 from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
-from jellybench_py.util import confirm, get_nvenc_session_limit, styled
+from jellybench_py.util import confirm, get_nvenc_session_limit, print_debug, styled
 
 
 def obtainSource(
@@ -108,6 +108,14 @@ def obtainSource(
         except requests.exceptions.RequestException:
             return False, "Request error"  # Network issues or invalid URL
 
+    if args.debug_flag:
+        print_debug("> Downloading file...")
+        print_debug(f"> > Source URL: {source_url}")
+        print_debug(f"> > Target Path: {target_path}")
+        print_debug("> > Server Provided Hashes:")
+        for idx, item in enumerate(hash_dict):
+            print_debug(f'> > > {item["type"]}: {item["hash"]}')
+
     hash_algorithm, source_hash, hash_message = match_hash(hash_dict)
 
     target_path = os.path.realpath(target_path)  # Relative Path!
@@ -139,6 +147,10 @@ def obtainSource(
     # print(f"CHECKSUM: {downloaded_checksum}")
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         return True, file_path  # Checksum valid
+    elif args.debug_flag and args.ignore_hash:
+        print_debug(f"> Checksum failed, expecting: {source_hash}")
+        print_debug(f"> Ignoring invalid checksum of: {downloaded_checksum}")
+        return True, file_path
     else:
         # os.remove(file_path)  # Delete file if checksum doesn't match
         print(f"\nSource hash is {source_hash} but we got {downloaded_checksum}.")
@@ -461,6 +473,13 @@ def parse_args():
         action="store_true",
         help="Enable additional debug output",
     )
+
+    parser.add_argument(
+        "--ignore-hash",
+        dest="ignore_hash",
+        action="store_true",
+        help="Ignore file hash",
+    )
     return parser.parse_args()
 
 
@@ -629,7 +648,7 @@ def cli() -> None:
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
     print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg" -', end="")
+    print('| Searching local "ffmpeg"...')
     ffmpeg_download = obtainSource(
         args.ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
