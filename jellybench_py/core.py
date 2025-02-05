@@ -596,7 +596,7 @@ def parse_args():
         dest="platform_override",
         type=str,
         required=False,
-        help="Override the detected system platform value when in debug mode"
+        help="Override the detected system platform value when in debug mode",
     )
 
     return parser.parse_args()
@@ -687,8 +687,10 @@ def cli() -> None:
         print_debug(f"> > {i}")
 
         if args.debug_flag and args.platform_override:
-            platform_id = hwi.get_platform_id(platforms, override=args.platform_override)
-            print_debug(f"> Overriding platform with \"{args.platform_override}\" ")
+            platform_id = hwi.get_platform_id(
+                platforms, override=args.platform_override
+            )
+            print_debug(f'> Overriding platform with "{args.platform_override}" ')
         else:
             platform_id = hwi.get_platform_id(platforms)
 
