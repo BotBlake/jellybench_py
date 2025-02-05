@@ -530,6 +530,14 @@ def parse_args():
         action="store_true",
         help=argparse.SUPPRESS,
     )
+
+    parser.add_argument(
+        "--override-ffmpeg",
+        dest="ffmpeg_override",
+        type=str,
+        help="Override server provided ffmpeg with ffmpeg binary at this path",
+    )
+
     return parser.parse_args()
 
 
@@ -695,33 +703,46 @@ def cli() -> None:
     print()
 
     # Download ffmpeg
-    ffmpeg_data = server_data["ffmpeg"]
-    print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg"...', end="")
-    ffmpeg_download = obtainSource(
-        args.ffmpeg_path,
-        ffmpeg_data["ffmpeg_source_url"],
-        ffmpeg_data["ffmpeg_hashs"],
-        "ffmpeg",
-        quiet=False,
-    )
+    if not (args.debug_flag and args.ffmpeg_override):
+        ffmpeg_data = server_data["ffmpeg"]
+        print(styled("Loading ffmpeg", [Style.BOLD]))
+        print('| Searching local "ffmpeg" -', end="")
+        ffmpeg_download = obtainSource(
+            args.ffmpeg_path,
+            ffmpeg_data["ffmpeg_source_url"],
+            ffmpeg_data["ffmpeg_hashs"],
+            "ffmpeg",
+            quiet=False,
+        )
 
-    if ffmpeg_download[0] is False:
-        print(f"An Error occured: {ffmpeg_download[1]}")
-        input("Press any key to exit")
-        exit()
-    elif ffmpeg_download[1].endswith((".zip", ".tar.gz", ".tar.xz")):
-        ffmpeg_files = f"{args.ffmpeg_path}/ffmpeg_files"
-        unpackArchive(ffmpeg_download[1], ffmpeg_files)
-        ffmpeg_binary = f"{ffmpeg_files}/ffmpeg"
-        if system_info["os"]["id"] == "windows":
-            ffmpeg_binary = f"{ffmpeg_binary}.exe"
+        if ffmpeg_download[0] is False:
+            print(f"An Error occured: {ffmpeg_download[1]}")
+            input("Press any key to exit")
+            exit()
+        elif ffmpeg_download[1].endswith((".zip", ".tar.gz", ".tar.xz")):
+            ffmpeg_files = f"{args.ffmpeg_path}/ffmpeg_files"
+            unpackArchive(ffmpeg_download[1], ffmpeg_files)
+            ffmpeg_binary = f"{ffmpeg_files}/ffmpeg"
+            if system_info["os"]["id"] == "windows":
+                ffmpeg_binary = f"{ffmpeg_binary}.exe"
+        else:
+            ffmpeg_binary = ffmpeg_download[1]
+        ffmpeg_binary = os.path.abspath(ffmpeg_binary)
+        ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
+        print(styled("Done", [Style.GREEN]))
+        print()
+
     else:
-        ffmpeg_binary = ffmpeg_download[1]
-    ffmpeg_binary = os.path.abspath(ffmpeg_binary)
-    ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
-    print(styled("Done", [Style.GREEN]))
-    print()
+        ffmpeg_binary = os.path.abspath(args.ffmpeg_override)
+        print_debug(f"> Overriding server ffmpeg with {ffmpeg_binary}")
+        if not os.path.exists(ffmpeg_binary):
+            print_debug(
+                "ERROR: Provided ffmpeg path does not exist or is not accessible by the current user."
+            )
+            exit()
+        elif os.path.isdir(ffmpeg_binary):
+            print_debug("ERROR: Provided ffmpeg path is a directory")
+            exit()
 
     # Downloading Videos
     files = server_data["tests"]
