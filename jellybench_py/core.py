@@ -294,7 +294,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         failure_reason.append("limited")
 
     elif min_fail - max_pass == 1:
-        print(f"> > > > Round Finished, Max Pass: {max_pass}, Min Fail: {min_fail}")
+        print(f"> > > > Test Finished, Max Pass: {max_pass}, Min Fail: {min_fail}")
         failure_reason.append("performance")
 
     else:
