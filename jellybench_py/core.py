@@ -475,10 +475,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--ignore-hash",
+        "--ignorehash",
         dest="ignore_hash",
         action="store_true",
-        help="Ignore file hash",
+        help=argparse.SUPPRESS,
     )
     return parser.parse_args()
 
