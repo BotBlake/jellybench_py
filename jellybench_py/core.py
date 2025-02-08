@@ -64,6 +64,9 @@ def obtainSource(
         return sha256_hash.hexdigest()
 
     def download_file(url, file_path, filename):
+        if args.debug_flag:
+            print_debug(f"> > Downloading file: {url}")
+
         label = r'| "{filename}" ({size:.2f}MB)'
         try:
             # Send HTTP request to get the file
@@ -116,23 +119,39 @@ def obtainSource(
 
     if args.debug_flag:
         print()
-        print_debug(f"> > Source URL: {source_url}")
-        print_debug(f"> > Target File Path: {file_path}")
-        print_debug("> > Server Provided Hashes:")
-        for idx, item in enumerate(hash_dict):
-            print_debug(f'> > > {item["type"]}: {item["hash"]}')
+        print_debug(f"> Target File Path: {file_path}")
+        if args.ignore_hash:
+            print_debug("> Server Provided Hashes:")
+            for idx, item in enumerate(hash_dict):
+                print_debug(f'> > {item["type"]}: {item["hash"]}')
 
     if os.path.exists(file_path):  # if file already exists
         existing_checksum = None
         if hash_algorithm == "sha256":
             existing_checksum = calculate_sha256(file_path)  # checksum validation
 
+        if args.debug_flag and args.ignore_hash:
+            print_debug("> Existing file hash:")
+            print_debug(f"> > {hash_algorithm}: {existing_checksum}")
+
         if existing_checksum == source_hash or source_hash is None:  # if valid/no sum
+            if (
+                args.debug_flag
+                and existing_checksum == source_hash
+                and args.ignore_hash
+            ):
+                print_debug(
+                    "> Existing file hash matches server provided hash, skipping download."
+                )
             print(" success!")
             if not quiet:
                 print(hash_message)
             return True, file_path  # Checksum valid, no need to download again
         else:
+            if args.debug_flag and args.ignore_hash:
+                print_debug(
+                    "> Existing file hash does not match server provided hash. Downloading new file"
+                )
             os.remove(file_path)  # Delete file if checksum doesn't match
 
     # Create target path if non present
@@ -146,6 +165,8 @@ def obtainSource(
     downloaded_checksum = calculate_sha256(file_path)  # checksum validation
     # print(f"CHECKSUM: {downloaded_checksum}")
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
+        if args.debug_flag and args.ignore_hash:
+            print_debug("> File successfully verified with checksum")
         return True, file_path  # Checksum valid
     elif args.debug_flag and args.ignore_hash:
         print_debug(f"> Checksum failed, expecting: {source_hash}")
@@ -153,7 +174,6 @@ def obtainSource(
         return True, file_path
     else:
         # os.remove(file_path)  # Delete file if checksum doesn't match
-        print(f"\nSource hash is {source_hash} but we got {downloaded_checksum}.")
         return False, "Invalid Checksum!"  # Checksum invalid
 
 
