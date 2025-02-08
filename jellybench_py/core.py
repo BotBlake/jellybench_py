@@ -64,9 +64,6 @@ def obtainSource(
         return sha256_hash.hexdigest()
 
     def download_file(url, file_path, filename):
-        if args.debug_flag:
-            print_debug(f"> > Downloading file: {url}")
-
         label = r'| "{filename}" ({size:.2f}MB)'
         try:
             # Send HTTP request to get the file
@@ -167,14 +164,22 @@ def obtainSource(
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         if args.debug_flag and args.ignore_hash:
             print_debug("> File successfully verified with checksum")
-        return True, file_path  # Checksum valid
-    elif args.debug_flag and args.ignore_hash:
-        print_debug(f"> Checksum failed, expecting: {source_hash}")
-        print_debug(f"> Ignoring invalid checksum of: {downloaded_checksum}")
-        return True, file_path
+        return True, file_path  # Checksum 
+    
     else:
-        # os.remove(file_path)  # Delete file if checksum doesn't match
-        return False, "Invalid Checksum!"  # Checksum invalid
+        if args.debug_flag:
+            print_debug(f"> Checksum failed, downloaded file hash:")
+            print_debug(f"> > sha256: {downloaded_checksum}")
+        
+        if args.ignore_hash:
+            print_debug(f"> Ignoring invalid checksum")
+            return True, file_path
+        else:
+            if args.debug_flag:
+                print_debug(f"> Expected file hash:")
+                print_debug(f"> > sha256: {source_hash}")
+            # os.remove(file_path)  # Delete file if checksum doesn't match
+            return False, "Invalid Checksum!"  # Checksum invalid
 
 
 def unpackArchive(archive_path, target_path):
