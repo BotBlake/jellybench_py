@@ -164,19 +164,19 @@ def obtainSource(
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
         if args.debug_flag and args.ignore_hash:
             print_debug("> File successfully verified with checksum")
-        return True, file_path  # Checksum 
-    
+        return True, file_path  # Checksum
+
     else:
         if args.debug_flag:
-            print_debug(f"> Checksum failed, downloaded file hash:")
+            print_debug("> Checksum failed, downloaded file hash:")
             print_debug(f"> > sha256: {downloaded_checksum}")
-        
+
         if args.ignore_hash:
-            print_debug(f"> Ignoring invalid checksum")
+            print_debug("> Ignoring invalid checksum")
             return True, file_path
         else:
             if args.debug_flag:
-                print_debug(f"> Expected file hash:")
+                print_debug("> Expected file hash:")
                 print_debug(f"> > sha256: {source_hash}")
             # os.remove(file_path)  # Delete file if checksum doesn't match
             return False, "Invalid Checksum!"  # Checksum invalid
