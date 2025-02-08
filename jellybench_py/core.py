@@ -108,19 +108,19 @@ def obtainSource(
         except requests.exceptions.RequestException:
             return False, "Request error"  # Network issues or invalid URL
 
-    if args.debug_flag:
-        print_debug("> Downloading file...")
-        print_debug(f"> > Source URL: {source_url}")
-        print_debug(f"> > Target Path: {target_path}")
-        print_debug("> > Server Provided Hashes:")
-        for idx, item in enumerate(hash_dict):
-            print_debug(f'> > > {item["type"]}: {item["hash"]}')
-
     hash_algorithm, source_hash, hash_message = match_hash(hash_dict)
 
     target_path = os.path.realpath(target_path)  # Relative Path!
     filename = os.path.basename(source_url)  # Extract filename from the URL
     file_path = os.path.join(target_path, filename)  # path/filename
+
+    if args.debug_flag:
+        print()
+        print_debug(f"> > Source URL: {source_url}")
+        print_debug(f"> > Target File Path: {file_path}")
+        print_debug("> > Server Provided Hashes:")
+        for idx, item in enumerate(hash_dict):
+            print_debug(f'> > > {item["type"]}: {item["hash"]}')
 
     if os.path.exists(file_path):  # if file already exists
         existing_checksum = None
@@ -648,7 +648,7 @@ def cli() -> None:
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
     print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg"...')
+    print('| Searching local "ffmpeg"...',end='')
     ffmpeg_download = obtainSource(
         args.ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
