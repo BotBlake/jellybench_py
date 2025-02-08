@@ -520,19 +520,17 @@ def cli() -> None:
     print()
 
     if args.debug_flag:
-        print(
-            styled("Dev Mode", [Style.BG_MAGENTA, Style.WHITE])
-            + ": Special Features and Output enabled  "
-            + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
+        print_debug(
+            ": Special Features and Output enabled",
+            styled("DO NOT UPLOAD RESULTS!", [Style.RED]),
+            prefix="Dev Mode",
         )
         print()
     print(styled("System Initialization", [Style.BOLD]))
 
     if not args.server_url.startswith("http") and args.debug_flag:
         if os.path.exists(args.server_url):
-            print(
-                styled("|", [Style.BG_MAGENTA, Style.WHITE]) + " Using local test-file"
-            )
+            print_debug("Using local test-file")
             platforms = "local"
             platform_id = "local"
         else:
@@ -542,10 +540,9 @@ def cli() -> None:
             exit()
     else:
         if args.server_url != Constants.DEFAULT_SERVER_URL:
-            print(
-                styled("|", [Style.BG_MAGENTA, Style.WHITE])
-                + " Not using official Server!  "
-                + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
+            print_debug(
+                " Not using official Server!",
+                styled("DO NOT UPLOAD RESULTS!", [Style.RED]),
             )
         platforms = api.getPlatform(
             args.server_url
@@ -648,7 +645,7 @@ def cli() -> None:
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
     print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg"...',end='')
+    print('| Searching local "ffmpeg"...', end="")
     ffmpeg_download = obtainSource(
         args.ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],
