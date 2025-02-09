@@ -144,8 +144,11 @@ def obtainSource(
             if not quiet:
                 print(hash_message)
             return True, file_path  # Checksum valid, no need to download again
+        elif args.ignore_hash:
+            print_debug("> Ignoring hash mismatch, using existing file.")
+            return True, file_path
         else:
-            if args.debug_flag and args.ignore_hash:
+            if args.debug_flag:
                 print_debug(
                     "> Existing file hash does not match server provided hash. Downloading new file"
                 )
