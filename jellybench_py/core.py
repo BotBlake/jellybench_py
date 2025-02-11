@@ -120,7 +120,7 @@ def obtainSource(
         if args.ignore_hash:
             print_debug("> Server Provided Hashes:")
             for idx, item in enumerate(hash_dict):
-                print_debug(f'> > {item["type"]}: {item["hash"]}')
+                print_debug(f"> > {item['type']}: {item['hash']}")
 
     if os.path.exists(file_path):  # if file already exists
         existing_checksum = None
