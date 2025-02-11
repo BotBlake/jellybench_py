@@ -30,7 +30,7 @@ import requests
 
 from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
-from jellybench_py.util import confirm, get_nvenc_session_limit, styled
+from jellybench_py.util import confirm, get_nvenc_session_limit, print_debug, styled
 
 
 def obtainSource(
@@ -114,17 +114,43 @@ def obtainSource(
     filename = os.path.basename(source_url)  # Extract filename from the URL
     file_path = os.path.join(target_path, filename)  # path/filename
 
+    if args.debug_flag:
+        print()
+        print_debug(f"> Target File Path: {file_path}")
+        if args.ignore_hash:
+            print_debug("> Server Provided Hashes:")
+            for idx, item in enumerate(hash_dict):
+                print_debug(f"> > {item['type']}: {item['hash']}")
+
     if os.path.exists(file_path):  # if file already exists
         existing_checksum = None
         if hash_algorithm == "sha256":
             existing_checksum = calculate_sha256(file_path)  # checksum validation
 
+        if args.debug_flag and args.ignore_hash:
+            print_debug("> Existing file hash:")
+            print_debug(f"> > {hash_algorithm}: {existing_checksum}")
+
         if existing_checksum == source_hash or source_hash is None:  # if valid/no sum
+            if args.debug_flag and args.ignore_hash:
+                if source_hash:
+                    print_debug(
+                        "> Existing file hash matches server provided hash, skipping download."
+                    )
+                else:
+                    print_debug("> No Server provided hash, skipping download.")
             print(" success!")
             if not quiet:
                 print(hash_message)
             return True, file_path  # Checksum valid, no need to download again
+        elif args.ignore_hash:
+            print_debug("> Ignoring hash mismatch, using existing file.")
+            return True, file_path
         else:
+            if args.debug_flag:
+                print_debug(
+                    "> Existing file hash does not match server provided hash. Downloading new file"
+                )
             os.remove(file_path)  # Delete file if checksum doesn't match
 
     # Create target path if non present
@@ -138,11 +164,24 @@ def obtainSource(
     downloaded_checksum = calculate_sha256(file_path)  # checksum validation
     # print(f"CHECKSUM: {downloaded_checksum}")
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
-        return True, file_path  # Checksum valid
+        if args.debug_flag and args.ignore_hash:
+            print_debug("> File successfully verified with checksum")
+        return True, file_path  # Checksum
+
     else:
-        # os.remove(file_path)  # Delete file if checksum doesn't match
-        print(f"\nSource hash is {source_hash} but we got {downloaded_checksum}.")
-        return False, "Invalid Checksum!"  # Checksum invalid
+        if args.debug_flag:
+            print_debug("> Checksum failed, downloaded file hash:")
+            print_debug(f"> > sha256: {downloaded_checksum}")
+
+        if args.ignore_hash:
+            print_debug("> Ignoring invalid checksum")
+            return True, file_path
+        else:
+            if args.debug_flag:
+                print_debug("> Expected file hash:")
+                print_debug(f"> > sha256: {source_hash}")
+            # os.remove(file_path)  # Delete file if checksum doesn't match
+            return False, "Invalid Checksum!"  # Checksum invalid
 
 
 def unpackArchive(archive_path, target_path):
@@ -461,6 +500,13 @@ def parse_args():
         action="store_true",
         help="Enable additional debug output",
     )
+
+    parser.add_argument(
+        "--ignorehash",
+        dest="ignore_hash",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args()
 
 
@@ -501,19 +547,17 @@ def cli() -> None:
     print()
 
     if args.debug_flag:
-        print(
-            styled("Dev Mode", [Style.BG_MAGENTA, Style.WHITE])
-            + ": Special Features and Output enabled  "
-            + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
+        print_debug(
+            ": Special Features and Output enabled",
+            styled("DO NOT UPLOAD RESULTS!", [Style.RED]),
+            prefix="Dev Mode",
         )
         print()
     print(styled("System Initialization", [Style.BOLD]))
 
     if not args.server_url.startswith("http") and args.debug_flag:
         if os.path.exists(args.server_url):
-            print(
-                styled("|", [Style.BG_MAGENTA, Style.WHITE]) + " Using local test-file"
-            )
+            print_debug(" Using local test-file")
             platforms = "local"
             platform_id = "local"
         else:
@@ -523,10 +567,9 @@ def cli() -> None:
             exit()
     else:
         if args.server_url != Constants.DEFAULT_SERVER_URL:
-            print(
-                styled("|", [Style.BG_MAGENTA, Style.WHITE])
-                + " Not using official Server!  "
-                + styled("DO NOT UPLOAD RESULTS!", [Style.RED])
+            print_debug(
+                " Not using official Server!",
+                styled("DO NOT UPLOAD RESULTS!", [Style.RED]),
             )
         platforms = api.getPlatform(
             args.server_url
@@ -629,7 +672,7 @@ def cli() -> None:
     # Download ffmpeg
     ffmpeg_data = server_data["ffmpeg"]
     print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg" -', end="")
+    print('| Searching local "ffmpeg"...', end="")
     ffmpeg_download = obtainSource(
         args.ffmpeg_path,
         ffmpeg_data["ffmpeg_source_url"],

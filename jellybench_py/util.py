@@ -30,3 +30,7 @@ def get_nvenc_session_limit(driver_version: int) -> int:
         return 3
     else:
         return 0
+
+
+def print_debug(*string: str, prefix: str | None = "|"):
+    print(styled(prefix, [Style.BG_MAGENTA, Style.WHITE]), *string)
