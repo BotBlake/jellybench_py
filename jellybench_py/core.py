@@ -557,7 +557,7 @@ def cli() -> None:
 
     if not args.server_url.startswith("http") and args.debug_flag:
         if os.path.exists(args.server_url):
-            print_debug("Using local test-file")
+            print_debug(" Using local test-file")
             platforms = "local"
             platform_id = "local"
         else:
