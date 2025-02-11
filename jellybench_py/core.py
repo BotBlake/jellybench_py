@@ -207,6 +207,11 @@ def format_gpu_arg(system_os, gpu, gpu_idx):
 
 
 def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
+
+    # Blake Approved Wording
+    # Test: One set of transcode parameters for a given file
+    # Run: One iteration of the loop in this function
+
     runs = []
     total_workers = 1
     min_fail = 2147483647  # some arbitrarily large number, using 32bit int limit
@@ -246,7 +251,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
             failure_reason.append(output[1])
             break
 
-        # exactly or faster than real time for this round
+        # exactly or faster than real time for this run
         elif output[1]["speed"] >= 1:
             max_pass = total_workers
             max_pass_run_data = output[1]
@@ -260,7 +265,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
             if external_limited:
                 run = False
 
-        # slower than real time for this round
+        # slower than real time for this run
         elif output[1]["speed"] < 1:
             min_fail = total_workers
             total_workers *= floor(total_workers * output[1]["speed"])
