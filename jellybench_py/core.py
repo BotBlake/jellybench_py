@@ -132,14 +132,13 @@ def obtainSource(
             print_debug(f"> > {hash_algorithm}: {existing_checksum}")
 
         if existing_checksum == source_hash or source_hash is None:  # if valid/no sum
-            if (
-                args.debug_flag
-                and existing_checksum == source_hash
-                and args.ignore_hash
-            ):
-                print_debug(
-                    "> Existing file hash matches server provided hash, skipping download."
-                )
+            if args.debug_flag and args.ignore_hash:
+                if source_hash:
+                    print_debug(
+                        "> Existing file hash matches server provided hash, skipping download."
+                    )
+                else:
+                    print_debug("> No Server provided hash, skipping download.")
             print(" success!")
             if not quiet:
                 print(hash_message)
