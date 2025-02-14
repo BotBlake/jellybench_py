@@ -11,6 +11,7 @@ class CommandConfig:
 class Constants:
     DEFAULT_OUTPUT_JSON: str = "./output.json"
     DEFAULT_SERVER_URL: str = "https://hwa.jellyfin.org"
+    DEFAULT_TIMEOUT: int = 120
     NVENC_TEST_WINDOWS = CommandConfig(
         BASE_CMD="{ffmpeg} -y -hwaccel cuda -hwaccel_output_format cuda -t 50 -hwaccel_device {gpu} -f lavfi -i testsrc ",
         WORKER_CMD="-vf hwupload -fps_mode passthrough -c:a copy -c:v h264_nvenc -b:v {bitrate} -f null -",
