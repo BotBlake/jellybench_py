@@ -203,9 +203,7 @@ def get_gpu_info() -> list:
                 "description": gpu["sppci_device_type"],
                 "product": gpu["sppci_model"],
                 "vendor": vendor,
-                # "physid": "",
-                # "businfo": gpu["sppci_bus"],
-                # "configuration": gpu["spdisplays_mtlgpufamilysupport"],
+                "businfo": gpu["sppci_bus"],
             }
 
             gpu_elements.append(entry)
