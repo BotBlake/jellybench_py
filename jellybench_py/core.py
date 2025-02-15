@@ -207,7 +207,6 @@ def format_gpu_arg(system_os, gpu, gpu_idx):
 
 
 def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
-
     # Blake Approved Wording
     # Test: One set of transcode parameters for a given file
     # Run: One iteration of the loop in this function
@@ -218,10 +217,8 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     max_pass = 0
     max_pass_run_data = {}
     failure_reason = []
-
     run = True
     last_speed = 0
-    failure_reason = []
     external_limited = (
         False  # Flag to save if run is being limited by external factors (eg. driver)
     )
