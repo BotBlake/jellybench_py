@@ -228,8 +228,10 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         assert max_pass < min_fail
 
         if debug_flag:
-            print(
-                f"> > > > Last Speed: {last_speed:.2f}, Workers: {total_workers}, Max Pass: {max_pass}, Min Fail: {min_fail}"
+            print_debug(
+                f"> > > > Starting run with {total_workers} Workers... ",
+                end="",
+                flush=True,
             )
 
         else:
@@ -247,10 +249,13 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         # First check if we continue Running:
         # Stop if errored
         if output[0]:
+            if args.debug_flag:
+                print(f"failed with reason {output[1]}")
             failure_reason.append(output[1])
             break
 
         # exactly or faster than real time for this run
+
         elif output[1]["speed"] >= 1:
             max_pass = total_workers
             max_pass_run_data = output[1]
@@ -268,6 +273,9 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         elif output[1]["speed"] < 1:
             min_fail = total_workers
             total_workers *= floor(total_workers * output[1]["speed"])
+
+        if args.debug_flag:
+            print(f'completed with speed {output[1]["speed"]:.02f}')
 
         # make sure we don't go into already benchmarked region
         if total_workers >= min_fail:
@@ -298,14 +306,16 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         failure_reason.append("limited")
 
     elif min_fail - max_pass == 1:
-        print(f"> > > > Test Finished, Max Pass: {max_pass}, Min Fail: {min_fail}")
+        print_debug(
+            f"> > > > Test Finished, Max Pass: {max_pass}, Min Fail: {min_fail}"
+        )
         failure_reason.append("performance")
 
     else:
         failure_reason.append("failed_inconclusive")
 
     if debug_flag:
-        print(f"> > > > Failed: {failure_reason}")
+        print_debug(f"> > > > Failed: {failure_reason}")
 
     if len(runs) > 0:
         result = {
