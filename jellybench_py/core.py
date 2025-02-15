@@ -213,7 +213,9 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
 
     runs = []
     total_workers = 1
-    min_fail = 2147483647  # some arbitrarily large number, using 32bit int limit
+    min_fail = (
+        Constants.MAXINT32
+    )  # some arbitrarily large number, using 32bit int limit
     max_pass = 0
     max_pass_run_data = {}
     failure_reason = []
