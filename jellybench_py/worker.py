@@ -32,9 +32,9 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
     timeout = 120  # Stop any process that runs for more then 120sec
     failure_reason = None
     try:
-        process_output = subprocess.run(
+        process_output = sp.run(
             ffmpeg_cmd,
-            stdin=subprocess.PIPE,
+            stdin=sp.PIPE,
             capture_output=True,
             universal_newlines=True,
             timeout=timeout,
@@ -42,7 +42,7 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
         retcode = process_output.returncode
         ffmpeg_stderr = process_output.stderr
 
-    except subprocess.TimeoutExpired:
+    except sp.TimeoutExpired:
         ffmpeg_stderr = ""
         retcode = 0
         failure_reason = "failed_timeout"
