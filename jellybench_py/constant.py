@@ -19,6 +19,7 @@ class Constants:
         BASE_CMD="{ffmpeg} -y -vsync 0 -hwaccel cuda -hwaccel_output_format cuda  -t 50 -hwaccel_device {gpu} -f lavfi -i testsrc ",
         WORKER_CMD="-vf hwupload -c:a copy -c:v h264_nvenc -b:v {bitrate} -f null -",
     )
+    MAXINT32 = 2147483647
 
 
 class Style(Enum):

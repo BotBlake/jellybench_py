@@ -22,7 +22,7 @@ import json
 import os
 import textwrap
 from hashlib import sha256
-from math import ceil
+from math import ceil, floor
 from shutil import get_terminal_size, rmtree, unpack_archive
 
 import progressbar
@@ -207,112 +207,124 @@ def format_gpu_arg(system_os, gpu, gpu_idx):
 
 
 def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
+    # Blake Approved Wording
+    # Test: One set of transcode parameters for a given file
+    # Run: One iteration of the loop in this function
+
     runs = []
     total_workers = 1
-    run = True
-    last_speed = -0.5  # to Assure first worker always has the required difference
-    formatted_last_speed = "00.00"
+    min_fail = (
+        Constants.MAXINT32
+    )  # some arbitrarily large number, using 32bit int limit
+    max_pass = 0
+    max_pass_run_data = {}
     failure_reason = []
+    run = True
+    last_speed = 0
     external_limited = (
         False  # Flag to save if run is being limited by external factors (eg. driver)
     )
-    if debug_flag:
-        print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
     while run:
-        if limit != 0 and total_workers > limit:
-            total_workers = limit
-            external_limited = True
-            if debug_flag:
-                print(
-                    f"> > > > External limit hit, reducing workers to {total_workers}"
-                )
+        assert max_pass < min_fail
 
-        if not debug_flag:
+        if debug_flag:
+            print_debug(
+                f"> > > > Starting run with {total_workers} Workers... ",
+                end="",
+                flush=True,
+            )
+
+        else:
             prog_bar.update(
                 status="Testing",
                 workers=f"{total_workers:02d}",
-                speed=formatted_last_speed,
+                speed=f"{last_speed:.02f}",
             )
+
         output = worker.workMan(total_workers, ffmpeg_cmd)
+
+        # output[0] boolean, Errored, False = no Errors, True = Errored
+        # output[1] Run data if no errors, Error reason if errored
+
         # First check if we continue Running:
-        # Stop when first run failed
-        if output[0] and total_workers == 1:
-            run = False
+        # Stop if errored
+        if output[0]:
+            if args.debug_flag:
+                print(f"failed with reason {output[1]}")
             failure_reason.append(output[1])
-        # When run after scaleback succeded:
-        elif (last_speed < 1 and not output[0]) and last_speed != -0.5:
-            limited = False
-            if last_speed == -1:
-                limited = True
-            last_speed = output[1]["speed"]
-            formatted_last_speed = f"{last_speed:05.2f}"
-            if debug_flag:
-                print(
-                    f"> > > > Scaleback success! Limit: {limited}, Total Workers: {total_workers}, Speed: {last_speed}"
-                )
-            run = False
+            break
 
-            if limited:
-                failure_reason.append("limited")
+        # exactly or faster than real time for this run
+
+        elif output[1]["speed"] >= 1:
+            max_pass = total_workers
+            max_pass_run_data = output[1]
+
+            if output[1]["speed"] > 1:
+                total_workers = ceil(total_workers * output[1]["speed"])
             else:
-                failure_reason.append("performance")
+                total_workers += 1
 
-        # Scaleback when fail on 1<workers (NvEnc Limit) or on Speed<1 with 1<last added workers or on last_Speed = Scaleback
-        elif (
-            (total_workers > 1 and output[0])
-            or (output[1]["speed"] < 1 and last_speed >= 2)
-            or (last_speed == -1)
-        ):
-            if output[0]:  # Assign variables depending on Scaleback reason
-                last_speed = -1
-                formatted_last_speed = "sclbk"
-            else:
-                last_speed = output[1]["speed"]
-                formatted_last_speed = f"{last_speed:05.2f}"
-            total_workers -= 1
-            if debug_flag:
-                print(
-                    f"> > > > Scaling back to: {total_workers}, Last Speed: {last_speed}"
-                )
-        elif output[0] and total_workers == 0:  # Fail when infinite scaleback
-            run = False
-            failure_reason.append(output[1])
-            failure_reason.append("infinity_scaleback")
-        elif output[1]["speed"] < 1:
-            run = False
-            failure_reason.append("performance")
-        # elif output[1]["speed"]-last_speed < 0.5:
-        #    run = False
-        #    failure_reason.append("failed_inconclusive")
-        else:  # When no failure happened
-            runs.append(output[1])
-            last_speed = output[1]["speed"]
-            total_workers += int(last_speed)
-            formatted_last_speed = f"{last_speed:05.2f}"
-            if debug_flag:
-                print(f"> > > > Workers: {total_workers}, Last Speed: {last_speed}")
-
-            # external limit hit
+            # if limited end run
             if external_limited:
-                if debug_flag:
-                    print("> > > > > External limit hit, ending run")
-
-                failure_reason.append("limited")
-                last_speed = output[1]["speed"]
-                formatted_last_speed = f"{last_speed:05.2f}"
                 run = False
 
+        # slower than real time for this run
+        elif output[1]["speed"] < 1:
+            min_fail = total_workers
+            total_workers *= floor(total_workers * output[1]["speed"])
+
+        if args.debug_flag:
+            print(f'completed with speed {output[1]["speed"]:.02f}')
+
+        # make sure we don't go into already benchmarked region
+        if total_workers >= min_fail:
+            total_workers = min_fail - 1
+
+        if total_workers <= max_pass:
+            total_workers = max_pass + 1
+
+        # Enforce external limit
+        if limit and total_workers > limit:
+            total_workers = limit
+            external_limited = True
+
+        if min_fail - max_pass == 1:
+            run = False
+
+        runs.append(output[1])
+        last_speed = output[1]["speed"]
+
+    # Process results
+
+    # ffmpeg errored
+    if failure_reason:
+        pass
+
+    # limited by nvidia driver
+    elif external_limited:
+        failure_reason.append("limited")
+
+    elif min_fail - max_pass == 1:
+        print_debug(
+            f"> > > > Test Finished, Max Pass: {max_pass}, Min Fail: {min_fail}"
+        )
+        failure_reason.append("performance")
+
+    else:
+        failure_reason.append("failed_inconclusive")
+
     if debug_flag:
-        print(f"> > > > Failed: {failure_reason}")
+        print_debug(f"> > > > Failed: {failure_reason}")
+
     if len(runs) > 0:
-        max_streams = runs[(len(runs)) - 1]["workers"]
         result = {
-            "max_streams": max_streams,
+            "max_streams": max_pass,
             "failure_reasons": failure_reason,
-            "single_worker_speed": runs[(len(runs)) - 1]["speed"],
-            "single_worker_rss_kb": runs[(len(runs)) - 1]["rss_kb"],
+            "single_worker_speed": max_pass_run_data["speed"],
+            "single_worker_rss_kb": max_pass_run_data["rss_kb"],
         }
-        prog_bar.update(status="Done", workers=max_streams, speed=formatted_last_speed)
+        prog_bar.update(status="Done", workers=max_pass, speed=f"{last_speed:.02f}")
         return True, runs, result
     else:
         prog_bar.label = "Skipped | Workers: 00 | Last Speed: 00.00"
