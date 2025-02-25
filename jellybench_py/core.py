@@ -403,7 +403,9 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
             f"| > Your GPU driver does only allow {successful_count} concurrent NvEnc sessions!"
         )
         skip_device = confirm(
-            message="| > Do you want to skip GPU tests?", default=False
+            message="| > Do you want to skip GPU tests?",
+            default=False,
+            automate=skip_prompts,
         )
         limited_driver = successful_count
     else:
@@ -436,7 +438,7 @@ def only_do_upload_flow():
     output_file = args.output_path
     filename = os.path.basename(output_file)
     print(f'Uploading "{filename}" to "{args.server_url}"')
-    if not confirm(default=True):
+    if not confirm(default=True, automate=skip_prompts):
         exit()
     print()
     if not os.path.exists(output_file):
@@ -509,6 +511,13 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--confirmall",
+        dest="confirmall",
+        action="store_true",
+        help="Run the script without interactivity! (automatically confirm all prompts)",
+    )
+
+    parser.add_argument(
         "--debug",
         dest="debug_flag",
         action="store_true",
@@ -534,6 +543,8 @@ def cli() -> None:
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
     print()
+    global skip_prompts
+    skip_prompts = args.confirmall
 
     if args.only_do_upload:
         only_do_upload_flow()
@@ -555,7 +566,7 @@ def cli() -> None:
         subsequent_indent=indent,
     )
     print(discplaimer_text)
-    if not confirm():
+    if not confirm(automate=skip_prompts):
         exit(1)
 
     print()
@@ -748,7 +759,7 @@ def cli() -> None:
                     test_arg_count += 1
     print(f"We will do {test_arg_count} tests.")
 
-    if not confirm():
+    if not confirm(automate=skip_prompts):
         exit()
 
     benchmark_data = []
@@ -844,7 +855,9 @@ def cli() -> None:
     }
     output_json(result_data, args.output_path, args.server_url)
     if args.output_path:
-        if confirm(message="Upload results to server?", default=True):
+        if confirm(
+            message="Upload results to server?", default=True, automate=skip_prompts
+        ):
             output_json(result_data, None, args.server_url)
 
 
