@@ -324,11 +324,13 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
             "single_worker_speed": max_pass_run_data["speed"],
             "single_worker_rss_kb": max_pass_run_data["rss_kb"],
         }
-        prog_bar.update(status="Done", workers=max_pass, speed=f"{last_speed:.02f}")
+        if prog_bar:
+            prog_bar.update(status="Done", workers=max_pass, speed=f"{last_speed:.02f}")
         return True, runs, result
     else:
-        prog_bar.label = "Skipped | Workers: 00 | Last Speed: 00.00"
-        prog_bar.update(status="Skipped", workers=0, speed=0)
+        if prog_bar:
+            prog_bar.label = "Skipped | Workers: 00 | Last Speed: 00.00"
+            prog_bar.update(status="Skipped", workers=0, speed=0)
         return False, runs, {}
 
 
