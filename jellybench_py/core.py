@@ -234,7 +234,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
                 flush=True,
             )
 
-        else:
+        if prog_bar:  # Update Progress Bar if one exists
             prog_bar.update(
                 status="Testing",
                 workers=f"{total_workers:02d}",
@@ -401,7 +401,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
             f"| > Your GPU driver does only allow {successful_count} concurrent NvEnc sessions!"
         )
         skip_device = confirm(
-            message="| > Do you want to skip GPU tests?", default=True
+            message="| > Do you want to skip GPU tests?", default=False
         )
         limited_driver = limit
     else:
@@ -774,61 +774,66 @@ def cli() -> None:
         progressbar.ETA(),
     ]
 
-    with progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets) as prog_bar:
-        progress = 0
-        for file in files:  # File Benchmarking Loop
-            ffmpeg_log.set_test_header(file["name"])
+    prog_bar = None
+    if not args.debug_flag:
+        prog_bar = progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets)
+
+    progress = 0
+    for file in files:  # File Benchmarking Loop
+        ffmpeg_log.set_test_header(file["name"])
+        if args.debug_flag:
+            print()
+            print(f"| Current File: {file['name']}")
+        filename = os.path.basename(file["source_url"])
+        current_file = os.path.abspath(f"{args.video_path}/{filename}")
+        current_file = current_file.replace("\\", "\\\\")
+        tests = file["data"]
+        for test in tests:
             if args.debug_flag:
-                print()
-                print(f"| Current File: {file['name']}")
-            filename = os.path.basename(file["source_url"])
-            current_file = os.path.abspath(f"{args.video_path}/{filename}")
-            current_file = current_file.replace("\\", "\\\\")
-            tests = file["data"]
-            for test in tests:
-                if args.debug_flag:
-                    print(
-                        f"> > Current Test: {test['from_resolution']} - {test['to_resolution']}"
+                print(
+                    f"> > Current Test: {test['from_resolution']} - {test['to_resolution']}"
+                )
+            commands = test["arguments"]
+            for command in commands:
+                test_data = {}
+                if command["type"] in supported_types:
+                    if args.debug_flag:
+                        print(f"> > > Current Device: {command['type']}")
+                    arguments = command["args"]
+                    arguments = arguments.format(
+                        video_file=current_file,
+                        gpu=format_gpu_arg(hwi.platform.system(), gpu, gpu_idx),
                     )
-                commands = test["arguments"]
-                for command in commands:
-                    test_data = {}
-                    if command["type"] in supported_types:
-                        if args.debug_flag:
-                            print(f"> > > Current Device: {command['type']}")
-                        arguments = command["args"]
-                        arguments = arguments.format(
-                            video_file=current_file,
-                            gpu=format_gpu_arg(hwi.platform.system(), gpu, gpu_idx),
-                        )
-                        test_cmd = f"{ffmpeg_binary} {arguments}"
-                        ffmpeg_log.set_test_args(test_cmd)
+                    test_cmd = f"{ffmpeg_binary} {arguments}"
+                    ffmpeg_log.set_test_args(test_cmd)
 
-                        # cap nvidia limit
-                        limit = 0
-                        if command["type"] == "nvidia":
-                            limit = limited_driver
+                    # cap nvidia limit
+                    limit = 0
+                    if command["type"] == "nvidia":
+                        limit = limited_driver
 
-                        valid, runs, result = benchmark(
-                            test_cmd, args.debug_flag, prog_bar, limit=limit
-                        )
-                        if not args.debug_flag:
-                            progress += 1
-                            prog_bar.update(progress)
-                        test_data["id"] = test["id"]
-                        test_data["type"] = command["type"]
-                        if command["type"] != "cpu":
-                            test_data["selected_gpu"] = gpu_idx
-                            test_data["selected_cpu"] = None
-                        else:
-                            test_data["selected_gpu"] = None
-                            test_data["selected_cpu"] = 0
-                        test_data["runs"] = runs
-                        test_data["results"] = result
+                    valid, runs, result = benchmark(
+                        test_cmd, args.debug_flag, prog_bar, limit=limit
+                    )
+                    if prog_bar:  # only update is progress bar exists
+                        progress += 1
+                        prog_bar.update(progress)
+                    test_data["id"] = test["id"]
+                    test_data["type"] = command["type"]
+                    if command["type"] != "cpu":
+                        test_data["selected_gpu"] = gpu_idx
+                        test_data["selected_cpu"] = None
+                    else:
+                        test_data["selected_gpu"] = None
+                        test_data["selected_cpu"] = 0
+                    test_data["runs"] = runs
+                    test_data["results"] = result
 
-                        if len(runs) >= 1:
-                            benchmark_data.append(test_data)
-    print("")  # Displaying Prompt, before attempting to output / build final dict
+                    if len(runs) >= 1:
+                        benchmark_data.append(test_data)
+    if prog_bar:
+        prog_bar.finish()  # Ensure the progress bar properly finishes if it was used
+    print("")
     print("Benchmark Done. Writing file to Output.")
     result_data = {
         "token": server_data["token"],
