@@ -28,7 +28,7 @@ from jellybench_py.constant import Constants
 
 
 def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
-    # print(f"{pid} |> Running FFMPEG Process: {pid}")
+    print(f"{pid} |> Running FFMPEG Process: {pid}")
     timeout = 120  # Stop any process that runs for more then 120sec
     failure_reason = None
     try:
@@ -46,7 +46,7 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
         ffmpeg_stderr = ""
         retcode = 0
         failure_reason = "failed_timeout"
-
+    print(f"{pid} |> Finished FFMPEG Process: {pid}")
     if 0 < retcode < 255:
         ffmpeg_log.set_test_error(ffmpeg_stderr)
         failure_reason = "generic_ffmpeg_failure"
@@ -75,6 +75,7 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
                     re.search(r"^Error (.*)", ffmpeg_stderr).group(1).strip()
                 )
                 break
+    
     return ffmpeg_stderr, failure_reason
 
 
@@ -104,6 +105,7 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
     while keep_waiting is True and failure_reason is None:
         now = time.time()
         if now - then >= Constants.DEFAULT_TIMEOUT:
+            print("Timeout")
             failure_reason = 'failed_timeout'
         else:
             keep_waiting = False
@@ -113,6 +115,7 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
                     results[idx] = stdout.strip()
                     if copy_of_proc.returncode == 0:
                         print(f"Process {idx} finished with output:\n{stdout}")
+                        raw_worker_data[idx] = [stderr, failure_reason]
                     else:
                         print(f"Process {idx} failed with return code {copy_of_proc.returncode}")
                         failure_reason = f"Worker {idx} failed with return code {copy_of_proc.returncode}"
@@ -179,6 +182,7 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
             }
 
             run_data_raw.append(worker_data)
+        print("Evaluating data now!")
         return False, evaluateRunData(run_data_raw), None
     else:
         return True, None, failure_reason
@@ -218,7 +222,6 @@ def evaluateRunData(run_data_raw: list) -> dict:
 def test_command(ffmpeg_cmd):
     ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
     successful_stream_count = 0
-    print(f"HERE IS YA COMMAND: {type(ffmpeg_cmd)}:{ffmpeg_cmd}")
     raw_worker_data = run_ffmpeg(1, ffmpeg_cmd_list)
 
     failure_reason = raw_worker_data[1]
