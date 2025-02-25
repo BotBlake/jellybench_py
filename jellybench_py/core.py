@@ -785,14 +785,14 @@ def cli() -> None:
         ffmpeg_log.set_test_header(file["name"])
         if args.debug_flag:
             print()
-            print(f"| Current File: {file['name']}")
+            print_debug(f"Current File: {file['name']}")
         filename = os.path.basename(file["source_url"])
         current_file = os.path.abspath(f"{args.video_path}/{filename}")
         current_file = current_file.replace("\\", "\\\\")
         tests = file["data"]
         for test in tests:
             if args.debug_flag:
-                print(
+                print_debug(
                     f"> > Current Test: {test['from_resolution']} - {test['to_resolution']}"
                 )
             commands = test["arguments"]
@@ -800,7 +800,7 @@ def cli() -> None:
                 test_data = {}
                 if command["type"] in supported_types:
                     if args.debug_flag:
-                        print(f"> > > Current Device: {command['type']}")
+                        print_debug(f"> > > Current Device: {command['type']}")
                     arguments = command["args"]
                     arguments = arguments.format(
                         video_file=current_file,
