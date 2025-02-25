@@ -7,7 +7,14 @@ def styled(text: str, styles: list[Style]) -> str:
     return f"{style}{text}{Style.RESET.value}"
 
 
-def confirm(message: str = "Continue", default: bool | None = None) -> bool:
+def confirm(
+    message: str = "Continue", default: bool | None = None, automate: bool | None = None
+) -> bool:
+    if automate:
+        if default:
+            return default
+        else:
+            return True
     prompts = {True: "(Y/n)", False: "(y/N)", None: "(y/n)"}
     full_message = f"{message} {prompts[default]}: "
 
