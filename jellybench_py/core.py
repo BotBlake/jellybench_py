@@ -275,7 +275,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
             total_workers *= floor(total_workers * output[1]["speed"])
 
         if args.debug_flag:
-            print(f'completed with speed {output[1]["speed"]:.02f}')
+            print(f"completed with speed {output[1]['speed']:.02f}")
 
         # make sure we don't go into already benchmarked region
         if total_workers >= min_fail:

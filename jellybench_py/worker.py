@@ -75,7 +75,7 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
                     re.search(r"^Error (.*)", ffmpeg_stderr).group(1).strip()
                 )
                 break
-    
+
     return ffmpeg_stderr, failure_reason
 
 
@@ -94,11 +94,7 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
     # Start processes
     for i in range(worker_count):
         procs[i] = sp.Popen(
-            ffmpeg_cmd_list,
-            stdin=sp.PIPE,
-            stdout=sp.PIPE,
-            stderr=sp.PIPE,
-            text=True
+            ffmpeg_cmd_list, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE, text=True
         )
     then = time.time()
     keep_waiting = True
@@ -106,10 +102,12 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
         now = time.time()
         if now - then >= Constants.DEFAULT_TIMEOUT:
             print("Timeout")
-            failure_reason = 'failed_timeout'
+            failure_reason = "failed_timeout"
         else:
             keep_waiting = False
-            for idx, copy_of_proc in list(procs.items()): # iterate over a copy to mutate original
+            for idx, copy_of_proc in list(
+                procs.items()
+            ):  # iterate over a copy to mutate original
                 if copy_of_proc.poll() is not None:
                     stdout, stderr = copy_of_proc.communicate()
                     results[idx] = stdout.strip()
@@ -117,7 +115,9 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
                         print(f"Process {idx} finished with output:\n{stdout}")
                         raw_worker_data[idx] = [stderr, failure_reason]
                     else:
-                        print(f"Process {idx} failed with return code {copy_of_proc.returncode}")
+                        print(
+                            f"Process {idx} failed with return code {copy_of_proc.returncode}"
+                        )
                         failure_reason = f"Worker {idx} failed with return code {copy_of_proc.returncode}"
                         break
                     del procs[idx]
