@@ -403,7 +403,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
         skip_device = confirm(
             message="| > Do you want to skip GPU tests?", default=False
         )
-        limited_driver = limit
+        limited_driver = successful_count
     else:
         print(" Error!")
         print("| > Your GPU is not capable of running NvEnc Streams!")
