@@ -30,7 +30,13 @@ import requests
 
 from jellybench_py import api, ffmpeg_log, hwi, worker
 from jellybench_py.constant import Constants, Style
-from jellybench_py.util import confirm, get_nvenc_session_limit, print_debug, styled
+from jellybench_py.util import (
+    confirm,
+    create_logger,
+    get_nvenc_session_limit,
+    print_debug,
+    styled,
+)
 
 
 def obtainSource(
@@ -541,13 +547,19 @@ def cli() -> None:
     Python Transcoding Acceleration Benchmark Client made for Jellyfin Hardware Survey
     """
     global args
+    global skip_prompts
+    global main_log
+    # global ffmpeg_log
+
     args = parse_args()
+    skip_prompts = args.confirmall
+    main_log = create_logger("jellybench", "./jellybench.log", args.debug_flag)
+    # ffmpeg_log = create_logger("jellybench worker log", "./jellybench-ffmpeg.log", args.debug_flag)
 
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
+    main_log.info(f"Started jellybench with {str(args)}")
     print()
-    global skip_prompts
-    skip_prompts = args.confirmall
 
     if args.only_do_upload:
         only_do_upload_flow()
@@ -585,6 +597,7 @@ def cli() -> None:
 
     if not args.server_url.startswith("http") and args.debug_flag:
         if os.path.exists(args.server_url):
+            main_log.info(f"Using local test-file ({args.server_url})")
             print_debug(" Using local test-file")
             platforms = "local"
             platform_id = "local"
@@ -593,6 +606,11 @@ def cli() -> None:
             print("ERROR: Invalid Server URL")
             input("Press any key to exit")
             exit()
+    elif not args.server_url.startswith("http"):
+        print()
+        print("ERROR: Invalid Server URL")
+        input("Press any key to exit")
+        exit()
     else:
         if args.server_url != Constants.DEFAULT_SERVER_URL:
             print_debug(
