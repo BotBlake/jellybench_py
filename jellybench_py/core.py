@@ -28,9 +28,15 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import progressbar
 import requests
 
-from jellybench_py import api, ffmpeg_log, hwi, worker
+from jellybench_py import api, hwi, worker
 from jellybench_py.constant import Constants, Style
-from jellybench_py.util import confirm, get_nvenc_session_limit, print_debug, styled
+from jellybench_py.util import (
+    confirm,
+    create_logger,
+    get_nvenc_session_limit,
+    print_debug,
+    styled,
+)
 
 
 def obtainSource(
@@ -43,15 +49,18 @@ def obtainSource(
         message = ""
         if not hash_dict:
             message = "Note: " + styled("No file hash provided!", [Style.YELLOW])
+            main_log.debug("No file hash provided!")
             return None, None, message
 
         for idx, hash in enumerate(hash_dict):
             if hash["type"] in supported_hashes:
                 message = f"Note: Compatible hashing method found. Using {hash['type']}"
+                main_log.debug(f"Compatible hashing method found. Using {hash['type']}")
                 return hash["type"], hash["hash"].lower(), message
         message = "Note: " + styled(
             "No compatible hashing method found.", [Style.YELLOW]
         )
+        main_log.debug("No compatible hashing method found")
         return None, None, message
 
     def calculate_sha256(file_path: str) -> str:
@@ -61,7 +70,9 @@ def obtainSource(
             # Read and update hash string value in blocks of 4K
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
-        return sha256_hash.hexdigest()
+        checksum = sha256_hash.hexdigest()
+        main_log.debug(f"Calculated sha265 checksum: {checksum}")
+        return checksum
 
     def download_file(url, file_path, filename):
         label = r'| "{filename}" ({size:.2f}MB)'
@@ -108,11 +119,13 @@ def obtainSource(
         except requests.exceptions.RequestException:
             return False, "Request error"  # Network issues or invalid URL
 
-    hash_algorithm, source_hash, hash_message = match_hash(hash_dict)
-
     target_path = os.path.realpath(target_path)  # Relative Path!
     filename = os.path.basename(source_url)  # Extract filename from the URL
     file_path = os.path.join(target_path, filename)  # path/filename
+
+    main_log.info(f"Obtaining {name} stored as {file_path}")
+
+    hash_algorithm, source_hash, hash_message = match_hash(hash_dict)
 
     if args.debug_flag:
         print()
@@ -123,6 +136,7 @@ def obtainSource(
                 print_debug(f"> > {item['type']}: {item['hash']}")
 
     if os.path.exists(file_path):  # if file already exists
+        main_log.debug(f'The file "{filename}" already exists. Trying to verify.')
         existing_checksum = None
         if hash_algorithm == "sha256":
             existing_checksum = calculate_sha256(file_path)  # checksum validation
@@ -132,6 +146,7 @@ def obtainSource(
             print_debug(f"> > {hash_algorithm}: {existing_checksum}")
 
         if existing_checksum == source_hash or source_hash is None:  # if valid/no sum
+            main_log.info("Checksum match: Using existing file, skipping download.")
             if args.debug_flag and args.ignore_hash:
                 if source_hash:
                     print_debug(
@@ -144,36 +159,47 @@ def obtainSource(
                 print(hash_message)
             return True, file_path  # Checksum valid, no need to download again
         elif args.ignore_hash:
-            print_debug("> Ignoring hash mismatch, using existing file.")
+            message = "Ignoring hash mismatch, using existing file."
+            print_debug(f"> {message}")
+            main_log.debug(message)
             return True, file_path
         else:
             if args.debug_flag:
-                print_debug(
-                    "> Existing file hash does not match server provided hash. Downloading new file"
-                )
+                message = "Existing file hash does not match server provided hash. Downloading new file"
+                print_debug(f"> {message}")
+                main_log.debug(message)
             os.remove(file_path)  # Delete file if checksum doesn't match
 
     # Create target path if non present
     if not os.path.exists(target_path):
+        main_log.debug(f'Target not existing, creating target path "{target_path}"')
         os.makedirs(target_path)
 
+    main_log.info(f"Downloading from {source_url}")
     success, message = download_file(source_url, file_path, name)
     if not success:
+        main_log.error("Download failed: {message}")
         return success, file_path
+    else:
+        main_log.debug("File downloaded successfully. Trying to verify...")
 
     downloaded_checksum = calculate_sha256(file_path)  # checksum validation
-    # print(f"CHECKSUM: {downloaded_checksum}")
     if downloaded_checksum == source_hash or source_hash is None:  # if valid/no sum
+        main_log.debug("Checksum correct. Download successfull!")
         if args.debug_flag and args.ignore_hash:
             print_debug("> File successfully verified with checksum")
         return True, file_path  # Checksum
 
     else:
+        main_log.warning(
+            f"Checksum fail; file-{downloaded_checksum}/server-{source_hash}"
+        )
         if args.debug_flag:
             print_debug("> Checksum failed, downloaded file hash:")
             print_debug(f"> > sha256: {downloaded_checksum}")
 
         if args.ignore_hash:
+            main_log("Ignoring hash mismatch, using dowloaded file.")
             print_debug("> Ignoring invalid checksum")
             return True, file_path
         else:
@@ -181,11 +207,14 @@ def obtainSource(
                 print_debug("> Expected file hash:")
                 print_debug(f"> > sha256: {source_hash}")
             # os.remove(file_path)  # Delete file if checksum doesn't match
+            main_log.error(f"Obtaining {name} failed. Checksum missmatch!")
             return False, "Invalid Checksum!"  # Checksum invalid
 
 
 def unpackArchive(archive_path, target_path):
+    main_log.debug(f"Unpacking archive into {target_path}")
     if os.path.exists(target_path):
+        main_log.debug("Removing already existing target files")
         rmtree(target_path)
         print(
             "INFO: "
@@ -195,7 +224,13 @@ def unpackArchive(archive_path, target_path):
 
     print("Unpacking Archive...", end="")
     if archive_path.endswith((".zip", ".tar.gz", ".tar.xz")):
+        main_log.debug("Unpacked archive file successfully.")
         unpack_archive(archive_path, target_path)
+    else:
+        main_log.error(f"Faulty archive provided at {archive_path}")
+        print(" Error!")
+        print("ERROR: No valid archive provided")
+        input("Press any key to exit")
     print(" success!")
 
 
@@ -226,7 +261,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     )
     if debug_flag:
         print_debug(f"> > > ffmpeg command: {ffmpeg_cmd}")
-        
+
     while run:
         assert max_pass < min_fail
 
@@ -244,7 +279,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
                 speed=f"{last_speed:.02f}",
             )
 
-        output = worker.workMan(total_workers, ffmpeg_cmd)
+        output = worker.workMan(total_workers, ffmpeg_cmd, ffmpeg_log)
 
         # output[0] boolean, Errored, False = no Errors, True = Errored
         # output[1] Run data if no errors, Error reason if errored
@@ -396,7 +431,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
 
     skip_device = False
     limited_driver = 0
-    successful_count, failure_reason = worker.test_command(command)
+    successful_count, failure_reason = worker.test_command(command, ffmpeg_log)
     if successful_count == worker_ammount:
         print(" success!")
 
@@ -419,12 +454,14 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
+    print(f"Skipping device: {skip_device}")
     return limited_driver, skip_device
 
 
 def output_json(data, file_path, server_url):
     # Write the data to the JSON file
     if file_path:
+        main_log.info(f"Storing results in {file_path}")
         # Create the directory if it doesn't exist
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as json_file:
@@ -432,12 +469,14 @@ def output_json(data, file_path, server_url):
         print(f"Data successfully saved to {file_path}")
     else:
         # upload to server
+        main_log.info(f"Uploading results to {args.server_url}")
         api.upload(server_url, data)
 
 
 def only_do_upload_flow():
     # this is the main logic flow if the user passes only_do_upload flag
     print("Manual Upload. " + styled("USE WITH CAUTION!", [Style.RED]))
+    main_log.info("Manual Upload flow triggered")
     output_file = args.output_path
     filename = os.path.basename(output_file)
     print(f'Uploading "{filename}" to "{args.server_url}"')
@@ -453,6 +492,7 @@ def only_do_upload_flow():
     except json.JSONDecodeError:
         print("Error: The file is not a valid JSON.")
         exit()
+    main_log.info(f"Uploading {output_file} to {args.server_url}")
     api.upload(args.server_url, data)
     exit()
 
@@ -541,18 +581,27 @@ def cli() -> None:
     Python Transcoding Acceleration Benchmark Client made for Jellyfin Hardware Survey
     """
     global args
+    global skip_prompts
+    global main_log
+    global ffmpeg_log
+
     args = parse_args()
+    skip_prompts = args.confirmall
+
+    logdir = os.path.abspath(Constants.DEFAULT_LOG_DIR)
+    os.makedirs(logdir, exist_ok=True)
+    main_log = create_logger("jellybench", f"{logdir}/jellybench.log", args.debug_flag)
+    ffmpeg_log = create_logger(
+        "jellybench worker log", f"{logdir}/jellybench-ffmpeg.log", args.debug_flag
+    )
 
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
+    main_log.info(f"Started jellybench with {str(args)}")
     print()
-    global skip_prompts
-    skip_prompts = args.confirmall
 
     if args.only_do_upload:
         only_do_upload_flow()
-
-    ffmpeg_log.create_log()
 
     # Informative disclaimer text
     terminal_size = get_terminal_size((80, 20))
@@ -585,6 +634,7 @@ def cli() -> None:
 
     if not args.server_url.startswith("http") and args.debug_flag:
         if os.path.exists(args.server_url):
+            main_log.info(f"Using local test-file ({args.server_url})")
             print_debug(" Using local test-file")
             platforms = "local"
             platform_id = "local"
@@ -593,6 +643,11 @@ def cli() -> None:
             print("ERROR: Invalid Server URL")
             input("Press any key to exit")
             exit()
+    elif not args.server_url.startswith("http"):
+        print()
+        print("ERROR: Invalid Server URL")
+        input("Press any key to exit")
+        exit()
     else:
         if args.server_url != Constants.DEFAULT_SERVER_URL:
             print_debug(
@@ -604,18 +659,29 @@ def cli() -> None:
         )  # obtain list of (supported) Platforms + ID's
         platform_id = hwi.get_platform_id(platforms)
 
+        used_platform = next(
+            (item for item in platforms if item["id"] == platform_id), None
+        )
+        main_log.info(f"Using platform {str(used_platform)}")
+
     print("| Obtaining System Information...", end="")
     system_info = hwi.get_system_info()
     print(" success!")
     print("| Detected System Config:")
     print(f"|   OS: {system_info['os']['pretty_name']}")
+
+    all_cpus_string = "CPU(s):"
     for cpu in system_info["cpu"]:
+        all_cpus_string += f" {cpu['product']} ({cpu['cores']})"
         print(f"|   CPU: {cpu['product']}")
         print(f"|     Threads: {cpu['cores']}")
         if "architecture" in cpu:
             print(f"|     Arch: {cpu['architecture']}")
+            all_cpus_string += f" [{cpu['architecture']}]"
+        all_cpus_string += ";"
 
     print("|   RAM:")
+    all_ram_string = "RAM:"
     for ram in system_info["memory"]:
         vendor = ram["vendor"] if "vendor" in ram else "Generic"
         size = ram["size"]
@@ -627,19 +693,26 @@ def cli() -> None:
         if units.lower() in ("kb", "kilobytes"):
             size //= 1000
             units = "mb"
-
-        print(f"|     - {vendor} {size} {units} {ram.get('FormFactor', 0)}")
+        ram_string = f"{vendor} {size} {units} {ram.get('FormFactor', 0)}"
+        print(f"|     - {ram_string}")
+        all_ram_string += f" {ram_string};"
 
     print("|   GPU(s):")
+    all_gpus_string = "GPU(s):"
     for i, gpu in enumerate(system_info["gpu"], 1):
+        all_gpus_string += f" {i}: {gpu['product']};"
         print(f"|     {i}: {gpu['product']}")
-    # input("Press any key to continue")
+
+    main_log.info(
+        f"Detected System Config: OS: {system_info['os']['pretty_name']} | {all_cpus_string} | {all_ram_string} | {all_gpus_string}"
+    )
 
     # Logic for Hardware Selection
     supported_types = []
 
     # CPU Logic
     if not args.disable_cpu:
+        main_log.info("Using all available CPUs")
         supported_types.append("cpu")
 
     # GPU Logic
@@ -679,6 +752,7 @@ def cli() -> None:
     # Appends the selected GPU to supported types
     if args.gpu_input != 0:
         gpu = gpus[gpu_idx]
+        main_log.info(f"Using GPU {args.gpu_input}")
         supported_types.append(gpu["vendor"])
 
     # Error if all hardware disabled
@@ -693,6 +767,7 @@ def cli() -> None:
     valid, server_data = api.getTestData(platform_id, platforms, args.server_url)
     if not valid:
         print(f"Cancelled: {server_data}")
+        main_log.error(f"Unabled to get TestData {server_data}")
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
@@ -748,6 +823,9 @@ def cli() -> None:
     if gpu and gpu["vendor"] == "nvidia":
         print(styled("Testing for driver limits: ", [Style.BOLD]) + "(NVIDIA)")
         limited_driver, skip_device = check_driver_limit(gpu, ffmpeg_binary, gpu_idx)
+        main_log.info(
+            f"NVIDIA Driver limit {str(limited_driver)}, Skipping {str(skip_device)}"
+        )
         if skip_device:
             supported_types.remove("nvidia")
 
@@ -761,6 +839,7 @@ def cli() -> None:
                 if command["type"] in supported_types:
                     test_arg_count += 1
     print(f"We will do {test_arg_count} tests.")
+    main_log.info(f"Supported test count: {test_arg_count}")
 
     if not confirm(automate=skip_prompts):
         exit()
@@ -794,9 +873,11 @@ def cli() -> None:
     if not args.debug_flag:
         prog_bar = progressbar.ProgressBar(max_value=test_arg_count, widgets=widgets)
 
+    main_log.info("Starting Benchmark Section now. FFmpeg logs take it from here.")
+
     progress = 0
     for file in files:  # File Benchmarking Loop
-        ffmpeg_log.set_test_header(file["name"])
+        ffmpeg_log.info(f"{file["name"]}")
         if args.debug_flag:
             print()
             print_debug(f"Current File: {file['name']}")
@@ -821,7 +902,7 @@ def cli() -> None:
                         gpu=format_gpu_arg(hwi.platform.system(), gpu, gpu_idx),
                     )
                     test_cmd = f"{ffmpeg_binary} {arguments}"
-                    ffmpeg_log.set_test_args(test_cmd)
+                    ffmpeg_log.info(f"> {test_cmd}")
 
                     # cap nvidia limit
                     limit = 0
@@ -850,6 +931,7 @@ def cli() -> None:
     if prog_bar:
         prog_bar.finish()  # Ensure the progress bar properly finishes if it was used
     print("")
+    main_log.info("Ending Benchmark Section now. FFmpeg logs are finished here.")
     print("Benchmark Done. Writing file to Output.")
     result_data = {
         "token": server_data["token"],

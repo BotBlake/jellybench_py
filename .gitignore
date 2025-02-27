@@ -14,3 +14,7 @@ ffmpeg_err_log.txt
 
 # macOS finder index files
 .DS_Store
+
+# Logfiles
+jellybench.log
+jellybench-ffmpeg.log
