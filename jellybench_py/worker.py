@@ -39,7 +39,6 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list, ffmpeg_log: Logger) -> tuple:  # Proc
         )
         retcode = process_output.returncode
         ffmpeg_stderr = process_output.stderr
-        ffmpeg_log.debug(f"Process {pid} Output: {retcode} - {str(ffmpeg_stderr)}")
     except subprocess.TimeoutExpired:
         ffmpeg_stderr = ""
         retcode = 0
@@ -76,6 +75,7 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list, ffmpeg_log: Logger) -> tuple:  # Proc
         ffmpeg_log.debug(
             f"< < < Finished FFMPEG Process {pid} with error '{failure_reason}'"
         )
+        ffmpeg_log.debug(f"Process Output: {retcode} - {str(ffmpeg_stderr)}")
     else:
         ffmpeg_log.debug(f"< < < Finished FFMPEG Process {pid} without error'")
 
