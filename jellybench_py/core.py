@@ -587,9 +587,12 @@ def cli() -> None:
 
     args = parse_args()
     skip_prompts = args.confirmall
-    main_log = create_logger("jellybench", "./jellybench.log", args.debug_flag)
+
+    logdir = os.path.abspath(Constants.DEFAULT_LOG_DIR)
+    os.makedirs(logdir, exist_ok=True)
+    main_log = create_logger("jellybench", f"{logdir}/jellybench.log", args.debug_flag)
     ffmpeg_log = create_logger(
-        "jellybench worker log", "./jellybench-ffmpeg.log", args.debug_flag
+        "jellybench worker log", f"{logdir}/jellybench-ffmpeg.log", args.debug_flag
     )
 
     print()
