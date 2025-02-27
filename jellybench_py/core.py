@@ -28,7 +28,7 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import progressbar
 import requests
 
-from jellybench_py import api, ffmpeg_log, hwi, worker
+from jellybench_py import api, hwi, worker
 from jellybench_py.constant import Constants, Style
 from jellybench_py.util import (
     confirm,
@@ -582,12 +582,14 @@ def cli() -> None:
     global args
     global skip_prompts
     global main_log
-    # global ffmpeg_log
+    global ffmpeg_log
 
     args = parse_args()
     skip_prompts = args.confirmall
     main_log = create_logger("jellybench", "./jellybench.log", args.debug_flag)
-    # ffmpeg_log = create_logger("jellybench worker log", "./jellybench-ffmpeg.log", args.debug_flag)
+    ffmpeg_log = create_logger(
+        "jellybench worker log", "./jellybench-ffmpeg.log", args.debug_flag
+    )
 
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
@@ -596,8 +598,6 @@ def cli() -> None:
 
     if args.only_do_upload:
         only_do_upload_flow()
-
-    ffmpeg_log.create_log()
 
     # Informative disclaimer text
     terminal_size = get_terminal_size((80, 20))
@@ -873,7 +873,7 @@ def cli() -> None:
 
     progress = 0
     for file in files:  # File Benchmarking Loop
-        ffmpeg_log.set_test_header(file["name"])
+        ffmpeg_log.info(f"{file["name"]}")
         if args.debug_flag:
             print()
             print_debug(f"Current File: {file['name']}")
@@ -898,7 +898,7 @@ def cli() -> None:
                         gpu=format_gpu_arg(hwi.platform.system(), gpu, gpu_idx),
                     )
                     test_cmd = f"{ffmpeg_binary} {arguments}"
-                    ffmpeg_log.set_test_args(test_cmd)
+                    ffmpeg_log.info(f"> {test_cmd}")
 
                     # cap nvidia limit
                     limit = 0
