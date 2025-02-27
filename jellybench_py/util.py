@@ -15,23 +15,23 @@ def create_logger(name, filepath, debug_flag=False):
     # Set logging level based on debug flag
     level = logging.DEBUG if debug_flag else logging.INFO
     logger.setLevel(level)
-    
+
     # Create FileHandler for logging to the specified file
     file_handler = logging.FileHandler(filepath)
     file_handler.setLevel(level)
-    
+
     # Define a standard log format
     formatter = logging.Formatter(
-        "%(asctime)s %(name)s %(levelname)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        "%(asctime)s %(name)s %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
     file_handler.setFormatter(formatter)
-    
+
     # Add the handler to the logger and disable propagation to parent loggers
     logger.addHandler(file_handler)
     logger.propagate = False
 
     return logger
+
 
 def styled(text: str, styles: list[Style]) -> str:
     # Return a styled string
@@ -43,7 +43,7 @@ def confirm(
     message: str = "Continue", default: bool | None = None, automate: bool | None = None
 ) -> bool:
     if automate:
-        if default:
+        if default is not None:
             return default
         else:
             return True

@@ -279,7 +279,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
                 speed=f"{last_speed:.02f}",
             )
 
-        output = worker.workMan(total_workers, ffmpeg_cmd)
+        output = worker.workMan(total_workers, ffmpeg_cmd, ffmpeg_log)
 
         # output[0] boolean, Errored, False = no Errors, True = Errored
         # output[1] Run data if no errors, Error reason if errored
@@ -431,7 +431,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
 
     skip_device = False
     limited_driver = 0
-    successful_count, failure_reason = worker.test_command(command)
+    successful_count, failure_reason = worker.test_command(command, ffmpeg_log)
     if successful_count == worker_ammount:
         print(" success!")
 
@@ -454,13 +454,14 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
+    print(f"Skipping device: {skip_device}")
     return limited_driver, skip_device
 
 
 def output_json(data, file_path, server_url):
     # Write the data to the JSON file
     if file_path:
-        main_log.infof(f"Storing results in {file_path}")
+        main_log.info(f"Storing results in {file_path}")
         # Create the directory if it doesn't exist
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as json_file:
@@ -468,7 +469,7 @@ def output_json(data, file_path, server_url):
         print(f"Data successfully saved to {file_path}")
     else:
         # upload to server
-        main_log.infof(f"Uploading results to {args.server_url}")
+        main_log.info(f"Uploading results to {args.server_url}")
         api.upload(server_url, data)
 
 
@@ -491,7 +492,7 @@ def only_do_upload_flow():
     except json.JSONDecodeError:
         print("Error: The file is not a valid JSON.")
         exit()
-    main_log.infof(f"Uploading {output_file} to {args.server_url}")
+    main_log.info(f"Uploading {output_file} to {args.server_url}")
     api.upload(args.server_url, data)
     exit()
 
