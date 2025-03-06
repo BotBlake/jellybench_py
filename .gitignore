@@ -1,6 +1,6 @@
 #Ignoring temp-files used by the tool
-/videos/*
-/ffmpeg/*
+**/videos/*
+**/ffmpeg/*
 output.json
 ffmpeg_err_log.txt
 
