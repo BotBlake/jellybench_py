@@ -1,4 +1,6 @@
 import logging
+import os
+from datetime import datetime
 
 from jellybench_py.constant import Style
 
@@ -73,3 +75,14 @@ def get_nvenc_session_limit(driver_version: int) -> int:
 
 def print_debug(*string: str, prefix: str | None = "|", **kwargs):
     print(styled(prefix, [Style.BG_MAGENTA, Style.WHITE]), *string, **kwargs)
+
+
+def create_name(basename: str) -> str:
+    run_dir = f"{basename}-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    return run_dir
+
+
+def resolve_path(path: str, name: str) -> str:
+    if "{run_dir}" in path:
+        path = path.replace("{run_dir}", name)
+    return os.path.abspath(path)

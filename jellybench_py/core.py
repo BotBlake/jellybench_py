@@ -33,8 +33,10 @@ from jellybench_py.constant import Constants, Style
 from jellybench_py.util import (
     confirm,
     create_logger,
+    create_name,
     get_nvenc_session_limit,
     print_debug,
+    resolve_path,
     styled,
 )
 
@@ -313,7 +315,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
             total_workers *= floor(total_workers * output[1]["speed"])
 
         if args.debug_flag:
-            print(f'completed with speed {output[1]["speed"]:.02f}')
+            print(f"completed with speed {output[1]['speed']:.02f}")
 
         # make sure we don't go into already benchmarked region
         if total_workers >= min_fail:
@@ -454,7 +456,6 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
-    print(f"Skipping device: {skip_device}")
     return limited_driver, skip_device
 
 
@@ -510,16 +511,16 @@ def parse_args():
         "--ffmpeg",
         dest="ffmpeg_path",
         type=str,
-        default="./ffmpeg",
-        help="Path for JellyfinFFMPEG download/execution (default: ./ffmpeg)",
+        default="./jellybench_data/ffmpeg",
+        help="Path for JellyfinFFMPEG download/execution (default: ./jellybench_data/ffmpeg)",
     )
 
     parser.add_argument(
         "--videos",
         dest="video_path",
         type=str,
-        default="./videos",
-        help="Path for download of test files (SSD required) (default: ./videos)",
+        default="./jellybench_data/videos",
+        help="Path for download of test files (SSD required) (default: ./jellybench_data/videos)",
     )
 
     parser.add_argument(
@@ -535,7 +536,7 @@ def parse_args():
         dest="output_path",
         type=str,
         default=Constants.DEFAULT_OUTPUT_JSON,
-        help="Path to the output JSON file (default: ./output.json)",
+        help=f"Path to the output JSON file (default: {Constants.DEFAULT_OUTPUT_JSON})",
     )
 
     parser.add_argument(
@@ -588,12 +589,16 @@ def cli() -> None:
     args = parse_args()
     skip_prompts = args.confirmall
 
-    logdir = os.path.abspath(Constants.DEFAULT_LOG_DIR)
+    run_dir_basename = create_name("results_run")
+
+    logdir = resolve_path(path=Constants.DEFAULT_LOG_DIR, name=run_dir_basename)
     os.makedirs(logdir, exist_ok=True)
     main_log = create_logger("jellybench", f"{logdir}/jellybench.log", args.debug_flag)
     ffmpeg_log = create_logger(
         "jellybench worker log", f"{logdir}/jellybench-ffmpeg.log", args.debug_flag
     )
+
+    args.output_path = resolve_path(path=args.output_path, name=run_dir_basename)
 
     print()
     print("Welcome to jellybench_py Cheeseburger Edition 🍔")
@@ -877,7 +882,7 @@ def cli() -> None:
 
     progress = 0
     for file in files:  # File Benchmarking Loop
-        ffmpeg_log.info(f"{file["name"]}")
+        ffmpeg_log.info(f"{file['name']}")
         if args.debug_flag:
             print()
             print_debug(f"Current File: {file['name']}")
