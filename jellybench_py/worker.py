@@ -22,12 +22,11 @@ import concurrent.futures
 import re
 import shlex
 import subprocess
+from logging import Logger
 
-from jellybench_py import ffmpeg_log
 
-
-def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
-    # print(f"{pid} |> Running FFMPEG Process: {pid}")
+def run_ffmpeg(pid: int, ffmpeg_cmd: list, ffmpeg_log: Logger) -> tuple:  # Process ID,
+    ffmpeg_log.debug(f"> > > Running FFMPEG Process: {pid}")
     timeout = 120  # Stop any process that runs for more then 120sec
     failure_reason = None
     try:
@@ -40,14 +39,12 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
         )
         retcode = process_output.returncode
         ffmpeg_stderr = process_output.stderr
-
     except subprocess.TimeoutExpired:
         ffmpeg_stderr = ""
         retcode = 0
         failure_reason = "failed_timeout"
 
     if 0 < retcode < 255:
-        ffmpeg_log.set_test_error(ffmpeg_stderr)
         failure_reason = "generic_ffmpeg_failure"
         for line in ffmpeg_stderr:
             if re.search(r" failed: (.*)\([0-9]+\)", ffmpeg_stderr):
@@ -74,17 +71,26 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list) -> tuple:  # Process ID,
                     re.search(r"^Error (.*)", ffmpeg_stderr).group(1).strip()
                 )
                 break
+    if failure_reason:
+        ffmpeg_log.debug(
+            f"< < < Finished FFMPEG Process {pid} with error '{failure_reason}'"
+        )
+        ffmpeg_log.debug(f"Process Output: {retcode} - {str(ffmpeg_stderr)}")
+    else:
+        ffmpeg_log.debug(f"< < < Finished FFMPEG Process {pid} without error'")
+
     return ffmpeg_stderr, failure_reason
 
 
-def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
+def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
+    ffmpeg_log = passed_logger
     ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
     raw_worker_data = {}
     failure_reason = None
-    # print(f"> Run with {worker_count} Processes")
+    ffmpeg_log.info(f"> > Run with {worker_count} Processes")
     with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
         futures = {
-            executor.submit(run_ffmpeg, nr, ffmpeg_cmd_list): nr
+            executor.submit(run_ffmpeg, nr, ffmpeg_cmd_list, ffmpeg_log): nr
             for nr in range(worker_count)
         }
         for future in concurrent.futures.as_completed(futures):
@@ -148,8 +154,10 @@ def workMan(worker_count: int, ffmpeg_cmd: str) -> tuple:
             }
 
             run_data_raw.append(worker_data)
+        ffmpeg_log.info("< < Run finished.")
         return False, evaluateRunData(run_data_raw)
     else:
+        ffmpeg_log.warning(f"< < Run failed: {failure_reason}")
         return True, failure_reason
 
 
@@ -184,10 +192,11 @@ def evaluateRunData(run_data_raw: list) -> dict:
     return run_data_eval
 
 
-def test_command(ffmpeg_cmd):
+def test_command(ffmpeg_cmd: str, passed_logger: Logger):
+    passed_logger.info(f"> > Running 1x ffmpeg {ffmpeg_cmd}")
     ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
     successful_stream_count = 0
-    raw_worker_data = run_ffmpeg(1, ffmpeg_cmd_list)
+    raw_worker_data = run_ffmpeg(1, ffmpeg_cmd_list, passed_logger)
 
     failure_reason = raw_worker_data[1]
     process_output = raw_worker_data[0]
@@ -196,5 +205,6 @@ def test_command(ffmpeg_cmd):
         success_pattern = r"Output #\d+, null, to 'pipe:'"
         successful_streams = re.findall(success_pattern, process_output)
         successful_stream_count = len(successful_streams)
+    passed_logger.info("< < Finished ffmpeg")
 
     return successful_stream_count, failure_reason
