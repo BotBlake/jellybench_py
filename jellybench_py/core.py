@@ -251,16 +251,14 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     runs = []
     total_workers = 1
     min_fail = (
-        Constants.MAXINT32
+        Constants.MAXINT32 if not limit else limit + 1
     )  # some arbitrarily large number, using 32bit int limit
     max_pass = 0
     max_pass_run_data = {}
     failure_reason = []
     run = True
     last_speed = 0
-    external_limited = (
-        False  # Flag to save if run is being limited by external factors (eg. driver)
-    )
+
     if debug_flag:
         print_debug(f"> > > ffmpeg command: {ffmpeg_cmd}")
 
@@ -305,10 +303,6 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
             else:
                 total_workers += 1
 
-            # if limited end run
-            if external_limited:
-                run = False
-
         # slower than real time for this run
         elif output[1]["speed"] < 1:
             min_fail = total_workers
@@ -327,7 +321,6 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         # Enforce external limit
         if limit and total_workers > limit:
             total_workers = limit
-            external_limited = True
 
         if min_fail - max_pass == 1:
             run = False
@@ -342,7 +335,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         pass
 
     # limited by nvidia driver
-    elif external_limited:
+    elif max_pass == limit:
         failure_reason.append("limited")
 
     elif min_fail - max_pass == 1:
