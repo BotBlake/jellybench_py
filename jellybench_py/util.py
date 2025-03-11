@@ -61,6 +61,17 @@ def confirm(
 
     return valid_inputs[response]
 
+def format_time(seconds: int) -> str:
+    if seconds >= 3600:
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        return f"{hours}h {minutes}m" if minutes else f"{hours}h"
+    elif seconds >= 60:
+        minutes = seconds // 60
+        sec = seconds % 60
+        return f"{minutes}m {sec}s" if sec else f"{minutes}m"
+    else:
+        return f"{seconds}s"
 
 def get_nvenc_session_limit(driver_version: int) -> int:
     if driver_version >= 550.0:

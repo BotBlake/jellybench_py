@@ -35,6 +35,7 @@ from jellybench_py.util import (
     confirm,
     create_logger,
     create_name,
+    format_time,  # noqa: F401
     get_nvenc_session_limit,
     print_debug,
     resolve_path,
