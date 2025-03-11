@@ -28,7 +28,8 @@ from shutil import get_terminal_size, rmtree, unpack_archive
 import progressbar
 import requests
 
-from jellybench_py import api, hwi, worker
+from jellybench_py import hwi, worker
+from jellybench_py.api import ApiClient, ApiError
 from jellybench_py.constant import Constants, Style
 from jellybench_py.util import (
     confirm,
@@ -459,7 +460,7 @@ def check_driver_limit(device: dict, ffmpeg_binary: str, gpu_idx: int):
     return limited_driver, skip_device
 
 
-def output_json(data, file_path, server_url):
+def output_json(data, file_path, api_client):
     # Write the data to the JSON file
     if file_path:
         main_log.info(f"Storing results in {file_path}")
@@ -471,7 +472,7 @@ def output_json(data, file_path, server_url):
     else:
         # upload to server
         main_log.info(f"Uploading results to {args.server_url}")
-        api.upload(server_url, data)
+        api_client.upload(data)
 
 
 def only_do_upload_flow():
@@ -494,7 +495,21 @@ def only_do_upload_flow():
         print("Error: The file is not a valid JSON.")
         exit()
     main_log.info(f"Uploading {output_file} to {args.server_url}")
-    api.upload(args.server_url, data)
+    
+    try:
+        api_client = ApiClient(args.server_url, main_log)  # Initialize API client
+        api_client.upload(data)  # Fetch supported platforms
+    except ValueError as e:
+        main_log.error("Invalid API URL: %s", e)
+        print("\nERROR: Invalid Server URL")
+        input("Press any key to exit")
+        exit()
+    except ApiError as e:
+        main_log.error("API request failed: %s", e)
+        print("\nERROR: Could not retrieve platform data")
+        input("Press any key to exit")
+        exit()
+
     exit()
 
 
@@ -637,37 +652,33 @@ def cli() -> None:
         print()
     print(styled("System Initialization", [Style.BOLD]))
 
-    if not args.server_url.startswith("http") and args.debug_flag:
-        if os.path.exists(args.server_url):
-            main_log.info(f"Using local test-file ({args.server_url})")
-            print_debug(" Using local test-file")
-            platforms = "local"
-            platform_id = "local"
-        else:
-            print()
-            print("ERROR: Invalid Server URL")
-            input("Press any key to exit")
-            exit()
-    elif not args.server_url.startswith("http"):
-        print()
-        print("ERROR: Invalid Server URL")
+
+    if args.server_url != Constants.DEFAULT_SERVER_URL:
+        print_debug(
+            " Not using official Server!",
+            styled("DO NOT UPLOAD RESULTS!", [Style.RED]),
+        )
+
+    try:
+        api_client = ApiClient(args.server_url, main_log)  # Initialize API client
+        platforms = api_client.get_platforms()  # Fetch supported platforms
+    except ValueError as e:
+        main_log.error("Invalid API URL: %s", e)
+        print("\nERROR: Invalid Server URL")
         input("Press any key to exit")
         exit()
-    else:
-        if args.server_url != Constants.DEFAULT_SERVER_URL:
-            print_debug(
-                " Not using official Server!",
-                styled("DO NOT UPLOAD RESULTS!", [Style.RED]),
-            )
-        platforms = api.getPlatform(
-            args.server_url
-        )  # obtain list of (supported) Platforms + ID's
-        platform_id = hwi.get_platform_id(platforms)
+    except ApiError as e:
+        main_log.error("API request failed: %s", e)
+        print("\nERROR: Could not retrieve platform data")
+        input("Press any key to exit")
+        exit()
 
-        used_platform = next(
-            (item for item in platforms if item["id"] == platform_id), None
-        )
-        main_log.info(f"Using platform {str(used_platform)}")
+    platform_id = hwi.get_platform_id(platforms)
+
+    used_platform = next(
+        (item for item in platforms if item["id"] == platform_id), None
+    )
+    main_log.info(f"Using platform {str(used_platform)}")
 
     print("| Obtaining System Information...", end="")
     system_info = hwi.get_system_info()
@@ -768,11 +779,11 @@ def cli() -> None:
         exit()
 
     # Stop Hardware Selection logic
-
-    valid, server_data = api.getTestData(platform_id, platforms, args.server_url)
-    if not valid:
-        print(f"Cancelled: {server_data}")
-        main_log.error(f"Unabled to get TestData {server_data}")
+    try:
+        server_data = api_client.get_test_data(platform_id)
+    except ApiError as e:
+        print(f"Cancelled: {e}")
+        main_log.error(f"Unabled to get TestData {e}")
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
@@ -943,12 +954,12 @@ def cli() -> None:
         "hwinfo": {"ffmpeg": ffmpeg_data, **system_info},
         "tests": benchmark_data,
     }
-    output_json(result_data, args.output_path, args.server_url)
+    output_json(result_data, args.output_path, api_client)
     if args.output_path:
         if confirm(
             message="Upload results to server?", default=True, automate=skip_prompts
         ):
-            output_json(result_data, None, args.server_url)
+            output_json(result_data, None, api_client)
 
 
 def main():
