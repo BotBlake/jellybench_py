@@ -180,8 +180,8 @@ def obtainSource(
     main_log.info(f"Downloading from {source_url}")
     success, message = download_file(source_url, file_path, name)
     if not success:
-        main_log.error("Download failed: {message}")
-        return success, file_path
+        main_log.error(f"Download failed: {message}")
+        return False, message
     else:
         main_log.debug("File downloaded successfully. Trying to verify...")
 
