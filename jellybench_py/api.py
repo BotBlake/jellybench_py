@@ -8,6 +8,7 @@ from urllib3.util.retry import Retry
 
 class ApiError(Exception):
     """Custom exception for API errors."""
+
     pass
 
 
@@ -22,7 +23,7 @@ class ApiClient:
         """
         if not server_url.startswith("http"):
             raise ValueError("Invalid server URL provided.")
-        
+
         self.server_url = server_url.rstrip("/")
         self.timeout = timeout
         self.logger = logger
@@ -95,7 +96,9 @@ class ApiClient:
         headers = {"Accept": "text/plain", "Content-Type": "application/json"}
 
         try:
-            response = self.session.post(api_url, json=data, headers=headers, timeout=self.timeout)
+            response = self.session.post(
+                api_url, json=data, headers=headers, timeout=self.timeout
+            )
             response.raise_for_status()
             self.logger.info("Upload successful")
             return {

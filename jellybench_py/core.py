@@ -495,7 +495,7 @@ def only_do_upload_flow():
         print("Error: The file is not a valid JSON.")
         exit()
     main_log.info(f"Uploading {output_file} to {args.server_url}")
-    
+
     try:
         api_client = ApiClient(args.server_url, main_log)  # Initialize API client
         api_client.upload(data)  # Fetch supported platforms
@@ -651,7 +651,6 @@ def cli() -> None:
         )
         print()
     print(styled("System Initialization", [Style.BOLD]))
-
 
     if args.server_url != Constants.DEFAULT_SERVER_URL:
         print_debug(
