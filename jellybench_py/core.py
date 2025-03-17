@@ -354,7 +354,7 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
         result = {
             "max_streams": max_pass,
             "failure_reasons": failure_reason,
-            "single_worker_speed": max_pass_run_data["speed"],
+            "single_worker_speed": max_pass_run_data.get("speed", 0),
             "single_worker_rss_kb": max_pass_run_data["rss_kb"],
         }
         if prog_bar:
