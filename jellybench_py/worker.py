@@ -122,6 +122,8 @@ def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
                     workrss = float(
                         rssline[1].split("=")[-1].replace("kB", "").replace("KiB", "")
                     )  # maxrss
+                else:
+                    workrss = 0
 
                 if re.match(r"^bench: utime", line):
                     timeline = line.split()
