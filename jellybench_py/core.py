@@ -473,7 +473,13 @@ def output_json(data, file_path, api_client):
     else:
         # upload to server
         main_log.info(f"Uploading results to {args.server_url}")
-        api_client.upload(data)
+        try:
+            api_client.upload(data)
+        except ApiError as e:
+            main_log.error("API request failed: %s", e)
+            print("\nERROR: Could not retrieve platform data")
+            input("Press any key to exit")
+            exit()
 
 
 def only_do_upload_flow():
@@ -499,7 +505,7 @@ def only_do_upload_flow():
 
     try:
         api_client = ApiClient(args.server_url, main_log)  # Initialize API client
-        api_client.upload(data)  # Fetch supported platforms
+        api_client.upload(data)  # Upload to Server
     except ValueError as e:
         main_log.error("Invalid API URL: %s", e)
         print("\nERROR: Invalid Server URL")
