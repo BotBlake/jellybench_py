@@ -24,6 +24,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from jellybench_py.util import format_time
+
 
 class ApiError(Exception):
     """Custom exception for API errors."""
@@ -54,8 +56,9 @@ class ApiClient:
         retries = Retry(
             total=3,
             backoff_factor=0.3,
-            status_forcelist=[429, 500, 502, 503, 504],
+            status_forcelist=[500, 502, 503, 504],
             allowed_methods=["GET", "POST"],
+            respect_retry_after_header=False,
         )
         adapter = HTTPAdapter(max_retries=retries)
         self.session.mount("http://", adapter)
@@ -100,6 +103,16 @@ class ApiClient:
             return response.json()
         except (requests.RequestException, JSONDecodeError) as e:
             self.logger.error("Error fetching test data: %s", e)
+            retry_after = None
+            if isinstance(e, requests.exceptions.HTTPError) and e.response is not None:
+                if e.response.status_code == 429:
+                    retry_after = format_time(
+                        int(e.response.headers.get("Retry-After", "0"))
+                    )
+                    self.logger.error(f"Server send retry_after: {retry_after}")
+                    raise ApiError(
+                        f"Too many requests - retry after {retry_after} secconds"
+                    ) from e
             raise ApiError("Failed to fetch test data") from e
 
     def upload(self, data: Dict[str, Any]) -> Dict[str, Any]:
