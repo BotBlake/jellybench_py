@@ -87,8 +87,11 @@ def check_ven(vendor):
 
 
 def get_platform_id(platforms: list) -> str:
+    os = platform.system().lower()
+    if os == "darwin":
+        os = "mac"
     for element in platforms:
-        if platform.system().lower() == element["type"].lower():
+        if os == element["type"].lower():
             return element["id"]
 
 
