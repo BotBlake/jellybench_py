@@ -353,16 +353,18 @@ def benchmark(ffmpeg_cmd: str, debug_flag: bool, prog_bar, limit=0) -> tuple:
     if debug_flag:
         print_debug(f"> > > > Failed: {failure_reason}")
 
-    if len(runs) > 0:
+    if max_pass_run_data:
+        # Use safe access for max_pass_run_data
         result = {
             "max_streams": max_pass,
             "failure_reasons": failure_reason,
-            "single_worker_speed": max_pass_run_data["speed"],
-            "single_worker_rss_kb": max_pass_run_data["rss_kb"],
+            "single_worker_speed": max_pass_run_data.get("speed", 0.0),
+            "single_worker_rss_kb": max_pass_run_data.get("rss_kb", 0),
         }
         if prog_bar:
             prog_bar.update(status="Done", workers=max_pass, speed=f"{last_speed:.02f}")
         return True, runs, result
+    # no passing run data—treat as no successful benchmark
     else:
         if prog_bar:
             prog_bar.label = "Skipped | Workers: 00 | Last Speed: 00.00"
