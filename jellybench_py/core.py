@@ -818,7 +818,6 @@ def cli() -> None:
 
     # Stop Hardware Selection logic
     try:
-        print(f"platform_id: {platform_id}")
         server_data = api_client.get_test_data(platform_id)
     except ApiError as e:
         print(f"Cancelled: {e}")
