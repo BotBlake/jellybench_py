@@ -590,6 +590,15 @@ def parse_args():
         action="store_true",
         help=argparse.SUPPRESS,
     )
+
+    parser.add_argument(
+        "--override-platform",
+        dest="platform_override",
+        action="store_true",
+        required=False,
+        help=argparse.SUPPRESS,
+    )
+
     return parser.parse_args()
 
 
@@ -673,12 +682,41 @@ def cli() -> None:
         input("Press any key to exit")
         exit()
 
-    platform_id = hwi.get_platform_id(platforms)
+    platform_id = None
+    if args.debug_flag:
+        print_debug("Supported Platforms:")
+        print_debug("IDX: Name - Type - Architecture")
+        for idx, platform in enumerate(platforms):
+            print_debug(
+                f'> [{idx}]: {platform["display_name"]}" - {platform["type"]} - {platform["architecture"]}'
+            )
+
+        if args.debug_flag and args.platform_override:
+            print("Platform Override enabled. Please select one to continue.")
+            platform_idx = None
+            valid_indices = [str(x) for x in range(len(platforms))]
+            while platform_idx not in valid_indices:
+                if platform_idx is not None:
+                    print(
+                        "Please select an available platform by "
+                        + "entering its index number into the prompt."
+                    )
+                platform_idx = input("Select platform: ")
+            platform_id = platforms[int(platform_idx)]["id"]
+            print("> Overriding platform with: ")
+            print(json.dumps(platforms[int(platform_idx)], indent=4))
+            print()
+
+    print("| Selecting Platform...", end="")
+    if platform_id is None:
+        # Set platform_id if not manualy set by user
+        platform_id = hwi.get_platform_id(platforms)
 
     used_platform = next(
         (item for item in platforms if item["id"] == platform_id), None
     )
     main_log.info(f"Using platform {str(used_platform)}")
+    print(" success!")
 
     print("| Obtaining System Information...", end="")
     system_info = hwi.get_system_info()
@@ -783,7 +821,7 @@ def cli() -> None:
         server_data = api_client.get_test_data(platform_id)
     except ApiError as e:
         print(f"Cancelled: {e}")
-        main_log.error(f"Unabled to get TestData {e}")
+        main_log.error(f"Unable to get TestData {e}")
         exit()
     print(styled("Done", [Style.GREEN]))
     print()
