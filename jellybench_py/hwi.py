@@ -86,11 +86,9 @@ def check_ven(vendor):
     return vendor
 
 
-def get_platform_id(platforms: list, override: str | None = None) -> str:
-    p = override if override else platform.system()
-    p = p.lower()
+def get_platform_id(platforms: list) -> str:
     for element in platforms:
-        if p == element["type"].lower():
+        if platform.system().lower() == element["type"].lower():
             return element["id"]
 
 
