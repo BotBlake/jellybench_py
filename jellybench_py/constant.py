@@ -9,7 +9,8 @@ class CommandConfig:
 
 
 class Constants:
-    DEFAULT_OUTPUT_JSON: str = "./output.json"
+    DEFAULT_OUTPUT_JSON: str = "./jellybench_data/{run_dir}/output.json"
+    DEFAULT_LOG_DIR: str = "./jellybench_data/{run_dir}/log"
     DEFAULT_SERVER_URL: str = "https://hwa.jellyfin.org"
     NVENC_TEST_WINDOWS = CommandConfig(
         BASE_CMD="{ffmpeg} -y -hwaccel cuda -hwaccel_output_format cuda -t 50 -hwaccel_device {gpu} -f lavfi -i testsrc ",

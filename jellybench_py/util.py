@@ -1,4 +1,38 @@
+import logging
+import os
+from datetime import datetime
+
 from jellybench_py.constant import Style
+
+
+def create_logger(name, filepath, debug_flag=False):
+    """
+    Helper function to create a logger with a FileHandler.
+    """
+    logger = logging.getLogger(name)
+    # Clear any existing handlers if present
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    # Set logging level based on debug flag
+    level = logging.DEBUG if debug_flag else logging.INFO
+    logger.setLevel(level)
+
+    # Create FileHandler for logging to the specified file
+    file_handler = logging.FileHandler(filepath)
+    file_handler.setLevel(level)
+
+    # Define a standard log format
+    formatter = logging.Formatter(
+        "%(asctime)s %(name)s %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
+    file_handler.setFormatter(formatter)
+
+    # Add the handler to the logger and disable propagation to parent loggers
+    logger.addHandler(file_handler)
+    logger.propagate = False
+
+    return logger
 
 
 def styled(text: str, styles: list[Style]) -> str:
@@ -11,7 +45,7 @@ def confirm(
     message: str = "Continue", default: bool | None = None, automate: bool | None = None
 ) -> bool:
     if automate:
-        if default:
+        if default is not None:
             return default
         else:
             return True
@@ -27,6 +61,17 @@ def confirm(
 
     return valid_inputs[response]
 
+def format_time(seconds: int) -> str:
+    if seconds >= 3600:
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        return f"{hours}h {minutes}m" if minutes else f"{hours}h"
+    elif seconds >= 60:
+        minutes = seconds // 60
+        sec = seconds % 60
+        return f"{minutes}m {sec}s" if sec else f"{minutes}m"
+    else:
+        return f"{seconds}s"
 
 def get_nvenc_session_limit(driver_version: int) -> int:
     if driver_version >= 550.0:
@@ -41,3 +86,14 @@ def get_nvenc_session_limit(driver_version: int) -> int:
 
 def print_debug(*string: str, prefix: str | None = "|", **kwargs):
     print(styled(prefix, [Style.BG_MAGENTA, Style.WHITE]), *string, **kwargs)
+
+
+def create_name(basename: str) -> str:
+    run_dir = f"{basename}-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    return run_dir
+
+
+def resolve_path(path: str, name: str) -> str:
+    if "{run_dir}" in path:
+        path = path.replace("{run_dir}", name)
+    return os.path.abspath(path)

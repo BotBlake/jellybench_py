@@ -17,114 +17,131 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 ##########################################################################################
-from json import JSONDecodeError, dumps, load
+from json import JSONDecodeError
+from typing import Any, Dict, List
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-from jellybench_py.constant import Style
-from jellybench_py.util import styled
-
-
-def getPlatform(server_url: str) -> list:
-    print("| Fetch Supported Platforms...", end="")
-    platforms = None
-    response = requests.get(f"{server_url}/api/v1/TestDataApi/Platforms")
-    if response.status_code == 200:
-        print(" success!")
-        platforms = response.json()
-    else:
-        print(" Error")
-        print(f"ERROR: Server replied with {response.status_code}")
-        input("Press any key to exit")
-        exit()
-    platforms = platforms["platforms"]
-    return platforms
+from jellybench_py.util import format_time
 
 
-def getTestData(platformID: str, platforms_data: list, server_url: str) -> tuple:
-    valid = True
-    print("| Loading tests... ", end="")
+class ApiError(Exception):
+    """Custom exception for API errors."""
 
-    # DevMode File Loading
-    if platformID == "local" and platforms_data == "local":
-        try:
-            with open(server_url, "r") as file:
-                data = load(file)
-                print(" success!")
-                return valid, data
-        except JSONDecodeError:
-            print(" Error")
-            print()
-            print(
-                styled(
-                    "ERROR: Failed to decode JSON. Please check the file format.",
-                    [Style.RED, Style.BOLD],
-                )
-            )
-            input("Press any key to exit")
-            exit()
-        return False, None
+    pass
 
-    current_platform = None
-    for platform in platforms_data:
-        if platform["id"] == platformID and platform["supported"]:
-            current_platform = platform["id"]
-    if not current_platform:
-        print(" Error")
-        print("ERROR: Your Platform isnt Supported.")
-        input("Press any key to exit")
-        exit()
 
-    response = requests.get(
-        f"{server_url}/api/v1/TestDataApi?platformId={current_platform}"
-    )
-    if response.status_code == 200:
-        print(" success!")
-        test_data = response.json()
-    elif response.status_code == 429:
-        print(" Error")
-        print(f"ERROR: Server replied with {response.status_code}")
-        ratelimit_time = response.headers["retry-after"]
-        print(f"Ratelimited: Retry in {ratelimit_time}s")
-        exit(1)
-    else:
-        print(" Error")
-        print(
-            styled(
-                f"ERROR: Server replied with {response.status_code}",
-                [Style.RED, Style.BOLD],
-            )
+class ApiClient:
+    def __init__(self, server_url: str, logger, timeout: int = 10) -> None:
+        """
+        Initializes the API client.
+
+        :param server_url: The base URL of the API.
+        :param logger: Logger instance, created using the `create_logger` function.
+        :param timeout: Request timeout in seconds.
+        """
+        if not server_url.startswith("http"):
+            raise ValueError("Invalid server URL provided.")
+
+        self.server_url = server_url.rstrip("/")
+        self.timeout = timeout
+        self.logger = logger
+        self.session = requests.Session()
+        self._configure_session()
+
+    def _configure_session(self) -> None:
+        """Configures a session with automatic retries for network errors."""
+        retries = Retry(
+            total=3,
+            backoff_factor=0.3,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=["GET", "POST"],
+            respect_retry_after_header=False,
         )
-        input("Press any key to exit")
-        exit()
-    return valid, test_data
+        adapter = HTTPAdapter(max_retries=retries)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+        self.session.verify = True  # Ensure SSL certificate verification
 
+    def get_platforms(self) -> List[Dict[str, Any]]:
+        """
+        Fetches the list of supported platforms from the API.
 
-def upload(server_url: str, data: dict):
-    api_url = f"{server_url}/api/v1/SubmissionApi"
-    print(f"| Uploading to {server_url}... ", end="")
+        :return: A list of platform dictionaries.
+        :raises ApiError: If the request fails.
+        """
+        url = f"{self.server_url}/api/v1/TestDataApi/Platforms"
+        self.logger.info("Fetching supported platforms from %s", url)
 
-    headers = {"accept": "text/plain", "Content-Type": "application/json"}
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            platforms_data = response.json()
+            platforms = platforms_data.get("platforms", [])
+            self.logger.info("Fetched %d platforms", len(platforms))
+            return platforms
+        except (requests.RequestException, JSONDecodeError) as e:
+            self.logger.error("Error fetching platforms: %s", e)
+            raise ApiError("Failed to fetch platforms") from e
 
-    response = requests.post(api_url, json=data, headers=headers)
-    if response.ok:
-        print(" success!")
-    else:
-        print(" Error")
-    print()
+    def get_test_data(self, platform_id: str) -> Dict[str, Any]:
+        """
+        Fetches test data for the given platform ID.
 
-    # Display detailed information about the response
-    print("\n--- Response Details ---")
-    print(f"URL: {response.url}")
-    print(f"Status Code: {response.status_code}")
-    print(f"Reason: {response.reason}")
-    print(f"Headers: {dumps(dict(response.headers), indent=4)}")
-    print(f"Elapsed Time: {response.elapsed}")
+        :param platform_id: The platform ID for which to retrieve test data.
+        :return: A dictionary containing test data.
+        :raises ApiError: If the request fails.
+        """
+        url = f"{self.server_url}/api/v1/TestDataApi?platformId={platform_id}"
+        self.logger.info("Fetching test data for platform %s from %s", platform_id, url)
 
-    # Display the raw response content
-    print("\n--- Raw Response Content ---")
-    print(response.content)
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+        except (requests.RequestException, JSONDecodeError) as e:
+            self.logger.error("Error fetching test data: %s", e)
+            retry_after = None
+            if isinstance(e, requests.exceptions.HTTPError) and e.response is not None:
+                if e.response.status_code == 429:
+                    retry_after = format_time(
+                        int(e.response.headers.get("Retry-After", "0"))
+                    )
+                    self.logger.error(f"Server send retry_after: {retry_after}")
+                    raise ApiError(
+                        f"Too many requests - retry after {retry_after} secconds"
+                    ) from e
+            raise ApiError("Failed to fetch test data") from e
 
-    # Display the text response (decoded from bytes)
-    print("\n--- Text Response Content ---")
-    print(response.text)
+    def upload(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Uploads benchmark results to the API.
+
+        :param data: The benchmark result data to be uploaded.
+        :return: A dictionary containing server response details.
+        :raises ApiError: If the request fails.
+        """
+        api_url = f"{self.server_url}/api/v1/SubmissionApi"
+        self.logger.info("Uploading data to %s", api_url)
+        headers = {"Accept": "text/plain", "Content-Type": "application/json"}
+
+        try:
+            response = self.session.post(
+                api_url, json=data, headers=headers, timeout=self.timeout
+            )
+            response.raise_for_status()
+            self.logger.info("Upload successful")
+            return {
+                "url": response.url,
+                "status_code": response.status_code,
+                "reason": response.reason,
+                "headers": dict(response.headers),
+                "elapsed": response.elapsed.total_seconds(),
+                "content": response.content,
+                "text": response.text,
+            }
+        except requests.RequestException as e:
+            self.logger.error("Upload failed: %s", e)
+            raise ApiError("Failed to upload data") from e
