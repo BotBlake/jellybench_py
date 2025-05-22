@@ -534,8 +534,8 @@ def parse_args():
     parser.add_argument(
         "--override-ffmpeg",
         dest="ffmpeg_override",
-        type=str,
-        help="Override server provided ffmpeg with ffmpeg binary at this path",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
 
     return parser.parse_args()
