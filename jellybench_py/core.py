@@ -833,6 +833,8 @@ def cli() -> None:
     print(styled("Done", [Style.GREEN]))
     print()
 
+    print(styled("Loading ffmpeg", [Style.BOLD]))
+
     # Check manual ffmpeg override
     if args.debug_flag and args.ffmpeg_override:
         ffmpeg_data = server_data["ffmpeg"]
@@ -858,7 +860,6 @@ def cli() -> None:
     # Download ffmpeg
     else:
         ffmpeg_data = server_data["ffmpeg"]
-        print(styled("Loading ffmpeg", [Style.BOLD]))
         print('| Searching local "ffmpeg" -', end="")
         ffmpeg_download = obtainSource(
             args.ffmpeg_path,
