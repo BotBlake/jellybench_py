@@ -598,6 +598,13 @@ def parse_args():
         required=False,
         help=argparse.SUPPRESS,
     )
+    parser.add_argument(
+        "--override-ffmpeg",
+        dest="ffmpeg_override",
+        action="store_true",
+        required=False,
+        help=argparse.SUPPRESS,
+    )
 
     return parser.parse_args()
 
@@ -826,17 +833,41 @@ def cli() -> None:
     print(styled("Done", [Style.GREEN]))
     print()
 
-    # Download ffmpeg
-    ffmpeg_data = server_data["ffmpeg"]
     print(styled("Loading ffmpeg", [Style.BOLD]))
-    print('| Searching local "ffmpeg"...', end="")
-    ffmpeg_download = obtainSource(
-        args.ffmpeg_path,
-        ffmpeg_data["ffmpeg_source_url"],
-        ffmpeg_data["ffmpeg_hashs"],
-        "ffmpeg",
-        quiet=False,
-    )
+
+    # Check manual ffmpeg override
+    if args.debug_flag and args.ffmpeg_override:
+        ffmpeg_data = server_data["ffmpeg"]
+        # WARNING: This lies to the Server about the used ffmpeg binary!
+
+        print_debug(f"> Overriding server ffmpeg with {args.ffmpeg_path}")
+
+        if not os.path.exists(args.ffmpeg_path):
+            ffmpeg_download = [
+                False,
+                "Provided ffmpeg path does not exist or is not accessible by the current user.",
+            ]
+        elif os.path.isdir(args.ffmpeg_path):
+            ffmpeg_download = [False, "Provided ffmpeg path is a directory"]
+        elif args.ffmpeg_path.endswith((".zip", ".tar.gz", ".tar.xz")):
+            ffmpeg_download = [
+                False,
+                "Provided ffmpeg path is an archive, this is unsupported during manual override",
+            ]
+        else:
+            ffmpeg_download = [True, args.ffmpeg_path]
+
+    # Download ffmpeg
+    else:
+        ffmpeg_data = server_data["ffmpeg"]
+        print('| Searching local "ffmpeg" -', end="")
+        ffmpeg_download = obtainSource(
+            args.ffmpeg_path,
+            ffmpeg_data["ffmpeg_source_url"],
+            ffmpeg_data["ffmpeg_hashs"],
+            "ffmpeg",
+            quiet=False,
+        )
 
     if ffmpeg_download[0] is False:
         print(f"An Error occured: {ffmpeg_download[1]}")
@@ -850,10 +881,11 @@ def cli() -> None:
             ffmpeg_binary = f"{ffmpeg_binary}.exe"
     else:
         ffmpeg_binary = ffmpeg_download[1]
-    ffmpeg_binary = os.path.abspath(ffmpeg_binary)
-    ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
-    print(styled("Done", [Style.GREEN]))
-    print()
+
+        ffmpeg_binary = os.path.abspath(ffmpeg_binary)
+        ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
+        print(styled("Done", [Style.GREEN]))
+        print()
 
     # Downloading Videos
     files = server_data["tests"]
