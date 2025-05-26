@@ -109,6 +109,9 @@ def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
         for pid in range(worker_count):
             process_output = raw_worker_data[pid][0]
 
+            workrss = None
+            rtime = None
+
             framelines = []
             rtime = 0.0
             for line in process_output.split("\n"):
@@ -127,14 +130,46 @@ def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
                     timeline = line.split()
                     rtime = float(timeline[3].split("=")[-1].replace("s", ""))  # rtime
 
+            if not (workrss or rtime):
+                ffmpeg_log.error("The ffmpeg process did not include maxrss/rtime")
+                ffmpeg_log.error(
+                    f"Executed command {ffmpeg_cmd} with {worker_count} parallel Workers"
+                )
+                failure_reason = "incomplete_data_return"
+                ffmpeg_log.warning(f"< < Run failed: {failure_reason}")
+                return True, failure_reason
+
             frames = []
             speeds = []
             framerates = 0
             for line in framelines:
                 new_line = line.split()
-                frames.append(int(float(new_line[0].split("=")[-1])))
-                framerates += int(float(new_line[1].split("=")[-1]))
-                speeds.append(float(new_line[6].split("=")[-1].replace("x", "")))
+                # get values:
+                line_frame = new_line[0].split("=")[-1]
+                line_framerate = new_line[1].split("=")[-1]
+                line_speed = new_line[6].split("=")[-1].replace("x", "")
+
+                # try to convert values
+                try:
+                    line_frame = int(float(line_frame))
+                    line_framerate = int(float(line_framerate))
+                    line_speed = float(line_speed)
+                except ValueError:
+                    ffmpeg_log.error(
+                        f'Impossible to parse frame/framerate/speed from ffmpeg: Frame="{line_frame}", FPS="{line_framerate}", Speed="{line_speed}"'
+                    )
+                    ffmpeg_log.error(
+                        f"Executed command {ffmpeg_cmd} with {worker_count} parallel Workers"
+                    )
+                    failure_reason = "incomplete_data_return"
+                    ffmpeg_log.warning(f"< < Run failed: {failure_reason}")
+                    return True, failure_reason
+
+                # continue with values
+                frames.append(line_frame)
+                framerates += line_framerate
+                speeds.append(line_speed)
+
             lineAmmount = len(framelines)
             if lineAmmount == 0:
                 lineAmmount = 1
