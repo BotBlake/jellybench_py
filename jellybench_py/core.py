@@ -1018,6 +1018,15 @@ def cli() -> None:
         prog_bar.finish()  # Ensure the progress bar properly finishes if it was used
     print("")
     main_log.info("Ending Benchmark Section now. FFmpeg logs are finished here.")
+    ffmpeg_incomplete_counter = 0
+    for test in benchmark_data:
+        test_failure_reasons = test["results"]["failure_reasons"]
+        if "incomplete_data_return" in test_failure_reasons:
+            ffmpeg_incomplete_counter += 1
+    if ffmpeg_incomplete_counter > 0:
+        print(
+            f"WARNING! {ffmpeg_incomplete_counter} test(s) where not parsable! Please check the logs and report this as a bug!"
+        )
     print("Benchmark Done. Writing file to Output.")
     result_data = {
         "token": server_data["token"],
