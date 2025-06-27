@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # jellybench_py.worker.py
 # A transcoding hardware benchmarking client (for Jellyfin)
 #    Copyright (C) 2024 BotBlake <B0TBlake@protonmail.com>
@@ -23,9 +21,13 @@ import re
 import shlex
 import subprocess
 from logging import Logger
+from typing import Any
 
 
-def run_ffmpeg(pid: int, ffmpeg_cmd: list, ffmpeg_log: Logger) -> tuple:  # Process ID,
+def run_ffmpeg(
+    pid: int, ffmpeg_cmd: list, ffmpeg_log: Logger
+) -> tuple[str, str | None]:
+    # Process ID,
     ffmpeg_log.debug(f"> > > Running FFMPEG Process: {pid}")
     timeout = 120  # Stop any process that runs for more then 120sec
     failure_reason = None
@@ -34,7 +36,7 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list, ffmpeg_log: Logger) -> tuple:  # Proc
             ffmpeg_cmd,
             stdin=subprocess.PIPE,
             capture_output=True,
-            universal_newlines=True,
+            text=True,
             timeout=timeout,
         )
         retcode = process_output.returncode
@@ -46,43 +48,47 @@ def run_ffmpeg(pid: int, ffmpeg_cmd: list, ffmpeg_log: Logger) -> tuple:  # Proc
 
     if 0 < retcode < 255:
         failure_reason = "generic_ffmpeg_failure"
-        for line in ffmpeg_stderr:
-            if re.search(r" failed: (.*)\([0-9]+\)", ffmpeg_stderr):
-                failure_reason = (
-                    re.search(r" failed: (.*)\([0-9]+\)", ffmpeg_stderr)
-                    .group(1)
-                    .strip()
-                )
-                break
-            elif re.search(r" failed -> (.*): (.*)", ffmpeg_stderr):
-                failure_reason = (
-                    re.search(r" failed -> (.*): (.*)", ffmpeg_stderr).group(2).strip()
-                )
-                break
-            elif re.search(r" failed -> (.*): (.*)", ffmpeg_stderr):
-                failure_reason = (
-                    re.search(r" failed!: (.*) \([0-9]+\))", ffmpeg_stderr)
-                    .group(1)
-                    .strip()
-                )
-                break
-            elif re.search(r"^Error (.*)", ffmpeg_stderr):
-                failure_reason = (
-                    re.search(r"^Error (.*)", ffmpeg_stderr).group(1).strip()
-                )
-                break
+
+        # TODO: rewrite this chain
+        # a) use the result of re.search like this:
+        #    if found := re.search(...):
+        #         reason = found.group(...).strip()
+        # b) consider using a list of regexes so this does not need to be repeated
+        # c) consider moving it to an extra function so the regexes can be tested -
+        #    here the 3rd if will never match (already covered in second if)
+
+        # Note that I have removed the for loop over the string and the breaks
+
+        if re.search(r" failed: (.*)\([0-9]+\)", ffmpeg_stderr):
+            failure_reason = (
+                re.search(r" failed: (.*)\([0-9]+\)", ffmpeg_stderr).group(1).strip()
+            )
+        elif re.search(r" failed -> (.*): (.*)", ffmpeg_stderr):
+            failure_reason = (
+                re.search(r" failed -> (.*): (.*)", ffmpeg_stderr).group(2).strip()
+            )
+        elif re.search(r" failed -> (.*): (.*)", ffmpeg_stderr):
+            # TODO: this is the same regex as in the previous if
+            failure_reason = (
+                re.search(r" failed!: (.*) \([0-9]+\))", ffmpeg_stderr).group(1).strip()
+            )
+        elif re.search(r"^Error (.*)", ffmpeg_stderr):
+            failure_reason = re.search(r"^Error (.*)", ffmpeg_stderr).group(1).strip()
+
     if failure_reason:
         ffmpeg_log.debug(
             f"< < < Finished FFMPEG Process {pid} with error '{failure_reason}'"
         )
-        ffmpeg_log.debug(f"Process Output: {retcode} - {str(ffmpeg_stderr)}")
+        ffmpeg_log.debug(f"Process Output: {retcode} - {ffmpeg_stderr}")
     else:
         ffmpeg_log.debug(f"< < < Finished FFMPEG Process {pid} without error'")
 
     return ffmpeg_stderr, failure_reason
 
 
-def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
+def work_man(
+    worker_count: int, ffmpeg_cmd: str, passed_logger: Logger
+) -> tuple[bool, None | Any | dict[str, Any]]:
     ffmpeg_log = passed_logger
     ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
     raw_worker_data = {}
@@ -112,6 +118,10 @@ def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
             framelines = []
             rtime = 0.0
             for line in process_output.split("\n"):
+                # TODO: why two if statements here? Intentional that the 2nd one has
+                # no caret? OTOH, re.match always starts at the beginning, so it has
+                # no effect anyway
+                # ruff: noqa: SIM102
                 if re.match(r"^frame=", line):
                     if re.match(r"frame=\s*([5-9]\d{2,}|[1-9]\d{3,})", line):
                         new_line = re.sub(r"=\s*", "=", line)
@@ -135,33 +145,33 @@ def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
                 frames.append(int(float(new_line[0].split("=")[-1])))
                 framerates += int(float(new_line[1].split("=")[-1]))
                 speeds.append(float(new_line[6].split("=")[-1].replace("x", "")))
-            lineAmmount = len(framelines)
-            if lineAmmount == 0:
-                lineAmmount = 1
+            line_count = len(framelines)
+            if line_count == 0:
+                line_count = 1
             if len(frames) == 0:
                 frames.append(1)
 
-            avgSpeed = sum(speeds) / lineAmmount
-            maxFrame = max(frames)
-            avgFPS = framerates / lineAmmount
+            avg_speed = sum(speeds) / line_count
+            max_frame = max(frames)
+            avg_fps = framerates / line_count
 
             worker_data = {
-                "frame": maxFrame,
-                "speed": avgSpeed,
+                "frame": max_frame,
+                "speed": avg_speed,
                 "time_s": rtime,
                 "rss": workrss,
-                "FPS": avgFPS,
+                "FPS": avg_fps,
             }
 
             run_data_raw.append(worker_data)
         ffmpeg_log.info("< < Run finished.")
-        return False, evaluateRunData(run_data_raw)
-    else:
-        ffmpeg_log.warning(f"< < Run failed: {failure_reason}")
-        return True, failure_reason
+        return False, evaluate_run_data(run_data_raw)
+
+    ffmpeg_log.warning(f"< < Run failed: {failure_reason}")
+    return True, failure_reason
 
 
-def evaluateRunData(run_data_raw: list) -> dict:
+def evaluate_run_data(run_data_raw: list[dict[str, Any]]) -> dict[str, Any]:
     workers = len(run_data_raw)
 
     total_time = 0
@@ -175,24 +185,25 @@ def evaluateRunData(run_data_raw: list) -> dict:
         total_fps += worker_data["FPS"]
         frames.append(worker_data["frame"])
         rss_kbs.append(worker_data["rss"])
-    max_Frame = max(frames)
+    max_frame = max(frames)
     max_rss = max(rss_kbs)
-    avgTime = total_time / workers
-    avgSpeed = total_speed / workers
-    avgFPS = total_fps / workers
+    avg_time = total_time / workers
+    avg_speed = total_speed / workers
+    avg_fps = total_fps / workers
 
     run_data_eval = {
         "workers": workers,
-        "frame": max_Frame,
-        "speed": avgSpeed,
-        "time_s": avgTime,
+        "frame": max_frame,
+        "speed": avg_speed,
+        "time_s": avg_time,
         "rss_kb": max_rss,
-        "avgFPS": avgFPS,
+        "avgFPS": avg_fps,
     }
     return run_data_eval
 
 
-def test_command(ffmpeg_cmd: str, passed_logger: Logger):
+def test_command(ffmpeg_cmd: str, passed_logger: Logger) -> tuple[int, str | None]:
+    # TODO: bad function name, only tests should start with `test_`.
     passed_logger.info(f"> > Running 1x ffmpeg {ffmpeg_cmd}")
     ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
     successful_stream_count = 0

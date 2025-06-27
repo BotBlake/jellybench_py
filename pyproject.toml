@@ -1,26 +1,34 @@
-[tool.poetry]
+[project]
 name = "jellybench_py"
 version = "0.1.0"
 description = "Hardware Acceleration Benchmark - python Client for Jellyfin Hardware Survey"
-authors = ["BotBlake <B0TBlake@protonmail.com>"]
+authors = [
+    {name="BotBlake", email="B0TBlake@protonmail.com"},
+]
 license = "GPL-3.0-or-later"
 readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests (>=2.31.0)",
+    "py-cpuinfo (>=9.0.0)",
+    "progressbar2 (>=4.5.0)",
+    "wmi; sys_platform == 'win32'",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11.2"
-requests = "^2.31.0"
-wmi = { version = "*", markers = "sys_platform == 'win32'" }
-py-cpuinfo = "^9.0.0"
-progressbar2 = "^4.5.0"
+[dependency-groups]
+dev = [
+    "ipython (>=9.0.0)",
+    "ruff (>=0.12, <0.13)",
+    "pre-commit (>=4.0.0)",
+    "pytest>=8.4.1",
+]
 
-[tool.poetry.group.dev.dependencies]
-ipython = "^9.0.0"
-ruff = "^0.12.0"
-pre-commit = "^4.0.0"
+[project.scripts]
+jellybench = 'jellybench_py.core:main'
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build"]
+build-backend = "uv_build"
 
-[tool.poetry.scripts]
-jellybench = 'jellybench_py.core:main'
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"

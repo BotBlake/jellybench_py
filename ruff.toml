@@ -1,9 +1,54 @@
 line-length = 88
-indent-width = 4
+target-version = "py311"
+include = ["*.py", "*.pyi", "*.ipynb", "**/pyproject.toml"]
 
 [lint]
-select = ["E4", "E7", "E9", "F", "I"]
-fixable = ["ALL"]
+select = ["ALL"]
+# select = ["E4", "E7", "E9", "F", "I"]
+# fixable = ["ALL"]
+ignore = [
+    # don't want to use
+    "ANN002", # Missing type annotation for *args
+    "ANN003", # Missing type annotation for **kwargs
+    "ANN401", # typing.Any not allowed
+    "B028", # warn without stacklevel
+    "COM812", # Trailing comma missing
+    "D", # enforce all documentation checkers
+    "DTZ", # enforce time zones in dates
+    "EM", # error messages in exceptions must be assigned to a variable first
+    "ERA001", # commented code - causes many false positives
+    "FBT003", # booleans for positional arguments (calling side)
+    "FIX002", # TODOs
+    "G004", # logging with f-strings
+    "INP001", # namespace packgage (false positive as we have setup.py)
+    "PD008", "PD009", # at/iat -> loc/iloc
+    "PD010", # unstack/pivot->pivot_table
+    "PD013", # stack->melt
+    "PD901", # name "df" not allowed (rule is deprecated anyway)
+    "PLC0414", # useless import alias (for re-exporting)
+    "PLR0913", # too many arguments (we know it, yet sometimes it is ok)
+    "PT006", # pytest-parametrize-names-wrong-type (no strings in parametrize)
+    "PTH", # pathlib instead of os functions
+    # "PTH123", # replace open(file_path) with file_path.open()
+    "RET504", # Unnecessary assignment before `return` statement
+    "SIM300", # yoda condition (often false positives in df[df.x == y])
+    "T201", # print found
+    "T203", # pprint found
+    "TD002", # TODOs require an author
+    "TD003", # TODOs require an issue/ticket
+    "TD005", # TODOs missing description (does not allow a line break after "TODO:")
+    "TRY", # enforce own Exception types and avoid non-constants in raise strings
+
+    # ignore for now but consider enabling!
+    "PLR2004", # magic values
+    "C901", "PLR0912", "PLR0915", # code too complex
+    "PLW1510", # `subprocess.run` without explicit `check` argument
+    "S603", # `subprocess` call: check for execution of untrusted input
+    "S607", # Starting a process with a partial executable path
+]
+
+[lint.pycodestyle]
+max-line-length = 120  # allow a little overlap over line-length
 
 [format]
 indent-style = "space"

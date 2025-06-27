@@ -11,37 +11,35 @@ It has not been properly tested, nor implemented for all Platforms yet!
 Use at your own risk.
 
 > [!NOTE]
-> This hardware benchmark will use all system ressources available.
+> This hardware benchmark will use all system resources available.
 
 > [!NOTE]
 > The Benchmark will take multiple hours to finish. Make sure to run it, when the system is not used.
 
 > [!WARNING]
-> By default the client will use the official Jellyfin Hardware Survey Server on <https://hwa.jellyfin.org/>. The script will not upload any Test results without seperate user confirmation. It will only load the tests and test files based on your Operating System and Architecture.
+> By default the client will use the official Jellyfin Hardware Survey Server on <https://hwa.jellyfin.org/>. The script will not upload any Test results without separate user confirmation. It will only load the tests and test files based on your Operating System and Architecture.
 
 ### Software Requirements
 
-jellybench_py is built as a python module via poetry. Therefore you need to have at least python 3.11.2 and poetry installed on your system.
-poetry is installed via pipx using: `pipx install poetry`
-If you do not have pipx installed, follow the [official install guide](https://pipx.pypa.io/stable/installation/)
-
-As of [Poetry 2.0.0](https://python-poetry.org/blog/announcing-poetry-2.0.0#poetry-export-and-poetry-shell-only-available-via-plugins) `poetry shell` is only available as a plugin. Therefore you will have to install the plugin as well. You will find an install guide [here](https://github.com/python-poetry/poetry-plugin-shell?tab=readme-ov-file#installation).
+jellybench_py is built as a python module via uv. Therefore you need to have uv installed on your system.
+To install uv, follow the [official install guide](https://docs.astral.sh/uv/getting-started/installation/).
 
 ### Installing jellybench_py
 
 1. Clone the GitHub Repository `git clone https://github.com/BotBlake/jellybench_py`
 2. Go into the jellybench_py Folder `cd jellybench_py`
 3. Switch to the development branch `git switch develop`
-4. Open the venv shell `poetry shell`
-5. Install Dependencies `poetry install`  
-_(To exit the Shell: `exit`)_
+4. Sync dependencies `uv sync`
+5. Activate the venv `source .venv/bin/activate` (instead of steps 4+5, you
+   can prefix every command with `uv run`)
+6. Install pre-commit hooks. `pre-commit install`
 
 > [!IMPORTANT]
 > Since the state of the software often Changes, you might have to do some "additional steps" to ensure its running correctly. They are explained down below in the [additional Steps](https://github.com/BotBlake/jellybench_py?tab=readme-ov-file#additional-steps) section.
 
 ### Running jellybench_py
 
-1. open the poetry shell `poetry shell`
+1. activate the venv
 2. run the script `jellybench`
 > [!IMPORTANT]
 > By default this will use the official Jellyfin Hardware Survey Server <https://hwa.jellyfin.org/>. If you want to run from a custom Server, use the `--server {url}` option

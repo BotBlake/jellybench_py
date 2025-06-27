@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # jellybench_py.api.py
 # A transcoding hardware benchmarking client (for Jellyfin)
 #    Copyright (C) 2024 BotBlake <B0TBlake@protonmail.com>
@@ -18,7 +16,8 @@
 #
 ##########################################################################################
 from json import JSONDecodeError
-from typing import Any, Dict, List
+from logging import Logger
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -30,11 +29,9 @@ from jellybench_py.util import format_time
 class ApiError(Exception):
     """Custom exception for API errors."""
 
-    pass
-
 
 class ApiClient:
-    def __init__(self, server_url: str, logger, timeout: int = 10) -> None:
+    def __init__(self, server_url: str, logger: Logger, timeout: int = 10) -> None:
         """
         Initializes the API client.
 
@@ -65,7 +62,7 @@ class ApiClient:
         self.session.mount("https://", adapter)
         self.session.verify = True  # Ensure SSL certificate verification
 
-    def get_platforms(self) -> List[Dict[str, Any]]:
+    def get_platforms(self) -> list[dict[str, Any]]:
         """
         Fetches the list of supported platforms from the API.
 
@@ -86,7 +83,7 @@ class ApiClient:
             self.logger.error("Error fetching platforms: %s", e)
             raise ApiError("Failed to fetch platforms") from e
 
-    def get_test_data(self, platform_id: str) -> Dict[str, Any]:
+    def get_test_data(self, platform_id: str) -> dict[str, Any]:
         """
         Fetches test data for the given platform ID.
 
@@ -104,18 +101,21 @@ class ApiClient:
         except (requests.RequestException, JSONDecodeError) as e:
             self.logger.error("Error fetching test data: %s", e)
             retry_after = None
-            if isinstance(e, requests.exceptions.HTTPError) and e.response is not None:
-                if e.response.status_code == 429:
-                    retry_after = format_time(
-                        int(e.response.headers.get("Retry-After", "0"))
-                    )
-                    self.logger.error(f"Server send retry_after: {retry_after}")
-                    raise ApiError(
-                        f"Too many requests - retry after {retry_after} secconds"
-                    ) from e
+            if (
+                isinstance(e, requests.exceptions.HTTPError)
+                and e.response is not None
+                and e.response.status_code == requests.codes.too_many_requests  # 429
+            ):
+                retry_after = format_time(
+                    int(e.response.headers.get("Retry-After", "0"))
+                )
+                self.logger.error(f"Server send retry_after: {retry_after}")
+                raise ApiError(
+                    f"Too many requests - retry after {retry_after} seconds"
+                ) from e
             raise ApiError("Failed to fetch test data") from e
 
-    def upload(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def upload(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Uploads benchmark results to the API.
 
