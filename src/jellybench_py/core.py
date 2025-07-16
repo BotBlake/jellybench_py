@@ -63,13 +63,13 @@ def obtain_source(
             main_log.debug("No file hash provided!")
             return None, None, message
 
-        # TODO: why enumerate?! Also, if hash_dict is already a dict, we are
-        # enumerating the keys only? Also, hash is a builtin (bad name)
-        for _idx, hash in enumerate(hash_dict):  # noqa: A001
-            if hash["type"] in supported_hashes:
-                message = f"Note: Compatible hashing method found. Using {hash['type']}"
-                main_log.debug(f"Compatible hashing method found. Using {hash['type']}")
-                return hash["type"], hash["hash"].lower(), message
+        for provided_hash in hash_dict:
+            if provided_hash["type"] in supported_hashes:
+                message = f"Note: Compatible hashing method found. Using {provided_hash['type']}"
+                main_log.debug(
+                    f"Compatible hashing method found. Using {provided_hash['type']}"
+                )
+                return provided_hash["type"], provided_hash["hash"].lower(), message
         message = "Note: " + styled(
             "No compatible hashing method found.", [Style.YELLOW]
         )
@@ -183,7 +183,6 @@ def obtain_source(
             print_debug(f"> {message}")
             main_log.debug(message)
 
-        # TODO: the following comment is wrong. Does not delete if there is a hash mismatch
         os.remove(file_path)  # Delete file if checksum doesn't match
 
     # Create target path if non present
@@ -248,7 +247,8 @@ def jelly_unpack_archive(archive_path: str, target_path: str) -> None:
     print(" success!")
 
 
-def format_gpu_arg(system_os, gpu, gpu_idx) -> None | str | Any:
+def format_gpu_arg(system_os, gpu, gpu_idx) -> None | str | int:
+    """Format the GPU argument based on the system OS and GPU information."""
     # TODO: what does this return? (any=gpu_idx, is that an int?)
 
     if not gpu:

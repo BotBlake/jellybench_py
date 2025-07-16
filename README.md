@@ -5,6 +5,7 @@ jellybench_py is a benchmarking tool designed to measure the performance of hard
 The benchmark results can be uploaded to the central Jellyfin Hardware Survey Server, allowing users to compare their hardware's performance with other systems. This facilitates easy visualization of the results and serves as a valuable resource for Jellyfin users looking to optimize their transcoding capabilities.
 
 ## [jellybench_py](https://github.com/BotBlake/jellybench_py) QuickStart Guide
+
 > [!WARNING]
 > This is an Alpha Version of the Client.
 It has not been properly tested, nor implemented for all Platforms yet!
@@ -41,6 +42,7 @@ To install uv, follow the [official install guide](https://docs.astral.sh/uv/get
 
 1. activate the venv
 2. run the script `jellybench`
+
 > [!IMPORTANT]
 > By default this will use the official Jellyfin Hardware Survey Server <https://hwa.jellyfin.org/>. If you want to run from a custom Server, use the `--server {url}` option
 
@@ -55,6 +57,7 @@ _To reduce Test Runtime you can disable certain hardware reducing the number of 
 - If the CPU and GPU are disabled the program will error out saying "ERROR: All Hardware Disabled"
 
 ### Path specification
+
 Since the Script downloads ffmpeg AND video files, you have the option to specify a Path for both.
 If the files are already existing there, they will not be redownloaded.
 
@@ -63,11 +66,12 @@ If the files are already existing there, they will not be redownloaded.
 
 ### Additional Steps
 
-_During development jellybench_py may require you to set up specific things manually these will change over Time_
+During development jellybench_py may require you to set up specific things manually these will change over Time
 
 - Make sure you are on the latest version `git pull`
 - Take a Look into the "Current Issues" section
 
 ## Current Issues
+
 You will find a List of currently known issues below.
 These will change over time, so please ensure you check this section regularly for any changes.

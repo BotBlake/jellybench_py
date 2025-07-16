@@ -86,13 +86,13 @@ def format_time(seconds: int) -> str:
 
 
 def get_nvenc_session_limit(driver_version: int) -> int:
-    # TODO: why does this function take an int but compares to float? Also, the
-    # `return 0` at the end seems unreachable.
-    if driver_version >= 550.0:
+    """Determines the maximum number of NVENC sessions based on the NVIDIA driver version."""
+
+    if driver_version >= 550:
         return 8
-    if 530.0 <= driver_version < 550.0:
+    if 530 <= driver_version < 550:
         return 5
-    if driver_version <= 530.0:
+    if driver_version <= 530:
         return 3
     return 0
 
