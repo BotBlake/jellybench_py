@@ -20,7 +20,7 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4.3.0
 
       - name: Set up Python ${{ matrix.py_version }}
         uses: actions/setup-python@v6.0.0
