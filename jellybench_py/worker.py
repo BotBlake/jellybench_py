@@ -122,6 +122,8 @@ def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
                     workrss = float(
                         rssline[1].split("=")[-1].replace("kB", "").replace("KiB", "")
                     )  # maxrss
+                else:
+                    workrss = 0
 
                 if re.match(r"^bench: utime", line):
                     timeline = line.split()
@@ -134,7 +136,10 @@ def workMan(worker_count: int, ffmpeg_cmd: str, passed_logger: Logger) -> tuple:
                 new_line = line.split()
                 frames.append(int(float(new_line[0].split("=")[-1])))
                 framerates += int(float(new_line[1].split("=")[-1]))
-                speeds.append(float(new_line[6].split("=")[-1].replace("x", "")))
+                speed = new_line[6].split("=")[-1].replace("x", "")
+                if speed == "N/A":
+                    speed = 0
+                speeds.append(float(speed))
             lineAmmount = len(framelines)
             if lineAmmount == 0:
                 lineAmmount = 1
