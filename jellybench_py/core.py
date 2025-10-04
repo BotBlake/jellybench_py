@@ -30,6 +30,7 @@ import requests
 
 from jellybench_py import hwi, worker
 from jellybench_py.api import ApiClient, ApiError
+from jellybench_py.compatibility import CompTool
 from jellybench_py.constant import Constants, Style
 from jellybench_py.util import (
     confirm,
@@ -727,6 +728,10 @@ def cli() -> None:
 
     print("| Obtaining System Information...", end="")
     system_info = hwi.get_system_info()
+
+    # initialize compatibility tool
+    comp_tool = CompTool(system_info=system_info, logger=main_log)
+
     print(" success!")
     print("| Detected System Config:")
     print(f"|   OS: {system_info['os']['pretty_name']}")
@@ -775,6 +780,7 @@ def cli() -> None:
     if not args.disable_cpu:
         main_log.info("Using all available CPUs")
         supported_types.append("cpu")
+        comp_tool.set_cpu(True)
 
     # GPU Logic
     gpus = system_info["gpu"]
@@ -815,6 +821,7 @@ def cli() -> None:
         gpu = gpus[gpu_idx]
         main_log.info(f"Using GPU {args.gpu_input}")
         supported_types.append(gpu["vendor"])
+        comp_tool.set_gpu(gpu_idx)
 
     # Error if all hardware disabled
     if args.gpu_input == 0 and args.disable_cpu:
@@ -884,6 +891,7 @@ def cli() -> None:
 
         ffmpeg_binary = os.path.abspath(ffmpeg_binary)
         ffmpeg_binary = ffmpeg_binary.replace("\\", "\\\\")
+        comp_tool.set_ffmpeg(ffmpeg_binary)
         print(styled("Done", [Style.GREEN]))
         print()
 
@@ -906,6 +914,7 @@ def cli() -> None:
     print()
 
     # Test for NvEnc Limits
+    comp_tool.run()
     if gpu and gpu["vendor"] == "nvidia":
         print(styled("Testing for driver limits: ", [Style.BOLD]) + "(NVIDIA)")
         limited_driver, skip_device = check_driver_limit(gpu, ffmpeg_binary, gpu_idx)
