@@ -8,8 +8,9 @@ output.json
 jellybench.log
 jellybench-ffmpeg.log
 
-#Python Cache
+#Python Cache + venv
 *pyc
+.venv
 
 #Poetry builds
 /dist/*
