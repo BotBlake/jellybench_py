@@ -722,60 +722,99 @@ def cli() -> None:
         print()
     print(styled("System Initialization", [Style.BOLD]))
 
+    # define api_mode Variable to chose Data Source based on it later
+    api_mode = "server"  # default to server
+
     if args.server_url != Constants.DEFAULT_SERVER_URL:
         print_debug(
             " Not using official Server!",
             styled("DO NOT UPLOAD RESULTS!", [Style.RED]),
         )
+        if not (
+            args.server_url.startswith("http://")
+            or (args.server_url.startswith("https://") and args.debug_flag)
+        ):
+            if args.server_url.endswith(".json"):
+                api_mode = "json"
+            elif args.server_url == "local":
+                api_mode = "local"
+                print("WARNING: Local Test generation is not yet possible!")
+                input("Press any key to exit")
+                sys.exit()
+            else:
+                api_mode = "server"
+    if api_mode == "server":
+        try:
+            api_client = ApiClient(args.server_url, main_log)  # Initialize API client
+            platforms = api_client.get_platforms()  # Fetch supported platforms
+        except ValueError as e:
+            main_log.error("Invalid API URL: %s", e)
+            print("\nERROR: Invalid Server URL")
+            input("Press any key to exit")
+            sys.exit()
+        except ApiError as e:
+            main_log.error("API request failed: %s", e)
+            print("\nERROR: Could not retrieve platform data")
+            input("Press any key to exit")
+            sys.exit()
 
-    try:
-        api_client = ApiClient(args.server_url, main_log)  # Initialize API client
-        platforms = api_client.get_platforms()  # Fetch supported platforms
-    except ValueError as e:
-        main_log.error("Invalid API URL: %s", e)
-        print("\nERROR: Invalid Server URL")
-        input("Press any key to exit")
-        sys.exit()
-    except ApiError as e:
-        main_log.error("API request failed: %s", e)
-        print("\nERROR: Could not retrieve platform data")
-        input("Press any key to exit")
-        sys.exit()
+        platform_id = None
+        if args.debug_flag:
+            print_debug("Supported Platforms:")
+            print_debug("IDX: Name - Type - Architecture")
+            for idx, platform in enumerate(platforms):
+                print_debug(
+                    f"> [{idx}]: {platform['display_name']} - {platform['type']} - "
+                    f"{platform['architecture']}"
+                )
 
-    platform_id = None
-    if args.debug_flag:
-        print_debug("Supported Platforms:")
-        print_debug("IDX: Name - Type - Architecture")
-        for idx, platform in enumerate(platforms):
-            print_debug(
-                f"> [{idx}]: {platform['display_name']} - {platform['type']} - "
-                f"{platform['architecture']}"
-            )
+            if args.debug_flag and args.platform_override:
+                print("Platform Override enabled. Please select one to continue.")
+                platform_idx = None
+                valid_indices = [str(x) for x in range(len(platforms))]
+                while platform_idx not in valid_indices:
+                    if platform_idx is not None:
+                        print(
+                            "Please select an available platform by "
+                            "entering its index number into the prompt."
+                        )
+                    platform_idx = input("Select platform: ")
+                platform_id = platforms[int(platform_idx)]["id"]
+                print("> Overriding platform with: ")
+                print(json.dumps(platforms[int(platform_idx)], indent=4))
+                print()
+    elif api_mode == "json":
+        used_platform = "local JSON"
+        platforms = None
+        server_data = None
+        response_json_path = os.path.abspath(args.server_url)
 
-        if args.debug_flag and args.platform_override:
-            print("Platform Override enabled. Please select one to continue.")
-            platform_idx = None
-            valid_indices = [str(x) for x in range(len(platforms))]
-            while platform_idx not in valid_indices:
-                if platform_idx is not None:
-                    print(
-                        "Please select an available platform by "
-                        "entering its index number into the prompt."
-                    )
-                platform_idx = input("Select platform: ")
-            platform_id = platforms[int(platform_idx)]["id"]
-            print("> Overriding platform with: ")
-            print(json.dumps(platforms[int(platform_idx)], indent=4))
-            print()
+        try:
+            with open(response_json_path) as f:
+                server_data = json.load(f)
+        except FileNotFoundError as e:
+            main_log.error("Invalid JSON Path: %s", e)
+            print("\nERROR: Invalid JSON Path. Try an absolute Path instead!")
+            input("Press any key to exit")
+            sys.exit()
+        except json.JSONDecodeError as e:
+            main_log.error("Invalid JSON File: %s", e)
+            print("\nERROR: Invalid JSON File")
+            input("Press any key to exit")
+
+        if not server_data:
+            main_log.error("Unknown JSON File Error")
+            print("\nERROR: Unknown JSON File Error")
+            input("Press any key to exit")
 
     print("| Selecting Platform...", end="")
-    if platform_id is None:
+    if platforms:
         # Set platform_id if not manually set by user
         platform_id = hwi.get_platform_id(platforms)
-
-    used_platform = next(
-        (item for item in platforms if item["id"] == platform_id), None
-    )
+    if not used_platform:
+        used_platform = next(
+            (item for item in platforms if item["id"] == platform_id), None
+        )
     main_log.info(f"Using platform {used_platform}")
     print(" success!")
 
@@ -879,12 +918,13 @@ def cli() -> None:
         sys.exit()
 
     # Stop Hardware Selection logic
-    try:
-        server_data = api_client.get_test_data(platform_id)
-    except ApiError as e:
-        print(f"Cancelled: {e}")
-        main_log.error(f"Unable to get TestData {e}")
-        sys.exit()
+    if not server_data:
+        try:
+            server_data = api_client.get_test_data(platform_id)
+        except ApiError as e:
+            print(f"Cancelled: {e}")
+            main_log.error(f"Unable to get TestData {e}")
+            sys.exit()
     print(styled("Done", [Style.GREEN]))
     print()
 
