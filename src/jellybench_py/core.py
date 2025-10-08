@@ -50,8 +50,14 @@ from jellybench_py.util import (
 def obtain_source(
     target_path: str, source_url: str, hash_dict: dict, name: str, *, quiet: bool
 ) -> tuple:
+    """
+    Obtain a file either by downloading or by finding it localy - hash verify and redownload if needed.
+    Returns Tuple: (success, data)
+    On Failure: data = Error Message
+    On Success: data = Path to file
+    """
     # TODO: this function is way too big. Consider moving the nested functions out,
-    # possibly as underscore private functions. Also add a docstring.
+    # possibly as underscore private functions.
 
     def match_hash(hash_dict: dict) -> tuple:
         supported_hashes = [
@@ -135,6 +141,7 @@ def obtain_source(
     target_path = os.path.realpath(target_path)  # Relative Path!
     filename = os.path.basename(source_url)  # Extract filename from the URL
     file_path = os.path.join(target_path, filename)  # path/filename
+    print(f"FilePath: {file_path}")
 
     main_log.info(f"Obtaining {name} stored as {file_path}")
 
@@ -224,7 +231,11 @@ def obtain_source(
 
 
 def jelly_unpack_archive(archive_path: str, target_path: str) -> None:
-    # wrapper around shutil.unpack_archive
+    """
+    wrapper around shutil.unpack_archive.
+    Used to unpack ffmpeg archive.
+    """
+    # TODO: This is only called once! It should be buildin!
     main_log.debug(f"Unpacking archive into {target_path}")
     if os.path.exists(target_path):
         main_log.debug("Removing already existing target files")
@@ -247,9 +258,13 @@ def jelly_unpack_archive(archive_path: str, target_path: str) -> None:
     print(" success!")
 
 
-def format_gpu_arg(system_os, gpu, gpu_idx) -> None | str | int:
-    """Format the GPU argument based on the system OS and GPU information."""
-    # TODO: what does this return? (any=gpu_idx, is that an int?)
+def format_gpu_arg(system_os, gpu, gpu_idx: int) -> None | str | int:
+    """
+    Format the GPU argument based on the system OS and GPU information.
+    Windows (at least NVIDIA) expects the GPU Index as a device selector.
+    Linux expects the businfo.
+    """
+    # TODO: fix typecasting for `gpu` element
 
     if not gpu:
         return None
@@ -643,7 +658,7 @@ def cli() -> None:
     Python Transcoding Acceleration Benchmark Client made for Jellyfin Hardware Survey
     """
     # TODO: Remove global variables!!!!! Extra many exclamation marks!!!!!!!!!!!!!!!!
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # Will move to self.config instead!
     global args
     global skip_prompts
     global main_log
