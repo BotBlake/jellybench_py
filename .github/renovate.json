@@ -19,12 +19,12 @@
 			]
 		},
 		{
-			"description": "Add the poetry and dependency GitHub label to poetry dependency bump PRs",
+			"description": "Add the uv and dependency GitHub label to uv dependency bump PRs",
 			"matchManagers": [
-				"poetry"
+				"uv"
 			],
 			"labels": [
-				"poetry",
+				"uv",
 				"dependencies"
 			]
 		}
