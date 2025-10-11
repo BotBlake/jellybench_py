@@ -1093,6 +1093,10 @@ def cli() -> None:
                     valid, runs, result = benchmark(
                         test_cmd, debug=args.debug_flag, prog_bar=prog_bar, limit=limit
                     )
+                    if not valid:
+                        main_log.error(
+                            f"Test {test['id']} on {command['type']} was not valid!"
+                        )
                     if prog_bar:  # only update is progress bar exists
                         progress += 1
                         prog_bar.update(progress)
@@ -1107,7 +1111,7 @@ def cli() -> None:
                     test_data["runs"] = runs
                     test_data["results"] = result
 
-                    if len(runs) >= 1:
+                    if len(runs) >= 1 and valid:
                         benchmark_data.append(test_data)
     if prog_bar:
         prog_bar.finish()  # Ensure the progress bar properly finishes if it was used
