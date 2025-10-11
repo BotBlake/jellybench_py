@@ -20,30 +20,14 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5
 
-      - name: Set up Python ${{ matrix.py_version }}
-        uses: actions/setup-python@v5.6.0
+      - name: Install uv and set python version
+        uses: astral-sh/setup-uv@v6
         with:
+          enable-cache: true
           python-version: ${{ matrix.py_version }}
 
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v4
+      - name: Lint with ruff on python ${{ matrix.py_version }}
+        run: uv run ruff check src/jellybench_py
 
-      - name: Setup a local virtual environment (if no poetry.toml file)
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry config virtualenvs.in-project true --local
-
-      - uses: actions/cache@v4
-        name: Define a cache for the virtual environment based on the dependencies lock file
-        with:
-          path: ./.venv
-          key: venv-${{matrix.py_version}}-${{ hashFiles('poetry.lock') }}
-
-      - name: Install the project dependencies
-        run: poetry install
-
-      - name: Lint with ruff
-        run: |
-          poetry run ruff check jellybench_py
