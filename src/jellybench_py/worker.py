@@ -49,31 +49,17 @@ def run_ffmpeg(
     if 0 < retcode < 255:
         failure_reason = "generic_ffmpeg_failure"
 
-        # TODO: rewrite this chain
-        # a) use the result of re.search like this:
-        #    if found := re.search(...):
-        #         reason = found.group(...).strip()
-        # b) consider using a list of regexes so this does not need to be repeated
-        # c) consider moving it to an extra function so the regexes can be tested -
-        #    here the 3rd if will never match (already covered in second if)
+        patterns = [
+            (r" failed: (.*)\([0-9]+\)", 1),
+            (r" failed -> (.*): (.*)", 2),
+            (r"failed!: (.*) \([0-9]+\)", 1),
+            (r"^Error (.*)", 1),
+        ]
 
-        # Note that I have removed the for loop over the string and the breaks
-
-        if re.search(r" failed: (.*)\([0-9]+\)", ffmpeg_stderr):
-            failure_reason = (
-                re.search(r" failed: (.*)\([0-9]+\)", ffmpeg_stderr).group(1).strip()
-            )
-        elif re.search(r" failed -> (.*): (.*)", ffmpeg_stderr):
-            failure_reason = (
-                re.search(r" failed -> (.*): (.*)", ffmpeg_stderr).group(2).strip()
-            )
-        elif re.search(r" failed -> (.*): (.*)", ffmpeg_stderr):
-            # TODO: this is the same regex as in the previous if
-            failure_reason = (
-                re.search(r" failed!: (.*) \([0-9]+\))", ffmpeg_stderr).group(1).strip()
-            )
-        elif re.search(r"^Error (.*)", ffmpeg_stderr):
-            failure_reason = re.search(r"^Error (.*)", ffmpeg_stderr).group(1).strip()
+        for pattern, group_idx in patterns:
+            if found := re.search(pattern, ffmpeg_stderr):
+                failure_reason = found.group(group_idx).strip()
+                break
 
     if failure_reason:
         ffmpeg_log.debug(
@@ -118,22 +104,17 @@ def work_man(
             framelines = []
             rtime = 0.0
             for line in process_output.split("\n"):
-                # TODO: why two if statements here? Intentional that the 2nd one has
-                # no caret? OTOH, re.match always starts at the beginning, so it has
-                # no effect anyway
-                # ruff: noqa: SIM102
-                if re.match(r"^frame=", line):
-                    if re.match(r"frame=\s*([5-9]\d{2,}|[1-9]\d{3,})", line):
-                        new_line = re.sub(r"=\s*", "=", line)
-                        framelines.append(new_line)  # framelines (Frame>500)
+                if re.match(r"frame=\s*([5-9]\d{2,}|[1-9]\d{3,})", line):
+                    new_line = re.sub(r"=\s*", "=", line)
+                    framelines.append(new_line)  # framelines (Frame>500)
 
-                if re.match(r"^bench: maxrss", line):
+                elif re.match(r"^bench: maxrss", line):
                     rssline = line.split()
                     workrss = float(
                         rssline[1].split("=")[-1].replace("kB", "").replace("KiB", "")
                     )  # maxrss
 
-                if re.match(r"^bench: utime", line):
+                elif re.match(r"^bench: utime", line):
                     timeline = line.split()
                     rtime = float(timeline[3].split("=")[-1].replace("s", ""))  # rtime
 
