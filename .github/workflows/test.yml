@@ -1,0 +1,33 @@
+name: Lint Jellybench
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  lint:
+    strategy:
+      fail-fast: false
+      matrix:
+        py_version: ['3.11', '3.12', '3.13']
+
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install uv and set python version
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.py_version }}
+
+      - name: Test util on python ${{ matrix.py_version }}
+        run: uv run tests/jellybench_py/test_util.py
+
