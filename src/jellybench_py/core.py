@@ -1114,9 +1114,7 @@ def cli() -> None:
                     if len(runs) >= 1 and valid:
                         benchmark_data.append(test_data)
     if prog_bar:
-        prog_bar.finish(
-            
-        )  # Ensure the progress bar properly finishes if it was used
+        prog_bar.finish()  # Ensure the progress bar properly finishes if it was used
     print()
     main_log.info("Ending Benchmark Section now. FFmpeg logs are finished here.")
     print("Benchmark Done. Writing file to Output.")
