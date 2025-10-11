@@ -11,23 +11,16 @@ on:
       - develop
 
 jobs:
-  lint:
-    strategy:
-      fail-fast: false
-      matrix:
-        py_version: ['3.11', '3.12', '3.13']
+  ruff:
+    runs-on: ubuntu-latest
 
-    runs-on: "ubuntu-latest"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install uv and set python version
-        uses: astral-sh/setup-uv@v6
+      - name: Run Ruff (latest)
+        uses: astral-sh/ruff-action@v3
         with:
-          enable-cache: true
-          python-version: ${{ matrix.py_version }}
-
-      - name: Lint with ruff on python ${{ matrix.py_version }}
-        run: uv run ruff check src/jellybench_py
+          version: latest
+          src: src/jellybench_py
 
