@@ -19,64 +19,48 @@
 ##########################################################################################
 import json
 import platform
+import shutil
 import subprocess
+import sys
+from typing import Any
 
 import cpuinfo
 
 if platform.system() == "Windows":
-    import wmi  # type: ignore
+    import wmi
 
 
-def test_lshw():  # test if lshw is installed properly (Executable Path/ False)
-    try:
-        lshw_subproc = subprocess.run(
-            ["which", "lshw"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        if lshw_subproc.returncode == 0:
-            lshw_path = lshw_subproc.stdout.strip()
-            return lshw_path
-        else:
-            return False
-    except FileNotFoundError:
-        return False
-
-
-def run_lshw(hardware):
-    lshw_path = test_lshw()
+def run_lshw(hardware: str) -> list[dict[str, Any]]:
+    lshw_path = shutil.which("lshw")
     if not lshw_path:
         print("Error")
         print()
         print("ERROR: lshw not installed. You may install it and try again.")
         input("Press any key to exit")
-        exit()
+        sys.exit()
     hw_subproc = subprocess.run(
         [lshw_path, "-json", "-class", hardware],
         text=True,
         capture_output=True,
         stdin=subprocess.PIPE,
-        universal_newlines=True,
     )
     hw_output = json.loads(hw_subproc.stdout)
     return hw_output
 
 
-def run_macos_sp(type: str) -> dict:
+def run_macos_sp(data_type: str) -> dict:
     # available data types can be found here "https://real-world-systems.com/docs/system_profiler.1.html"
     # or by simply running `systep_profiler -listDataTypes`
     hw_subproc = subprocess.run(
-        ["system_profiler", "-json", "-detailLevel", "mini", type],
+        ["system_profiler", "-json", "-detailLevel", "mini", data_type],
         text=True,
         capture_output=True,
         stdin=subprocess.PIPE,
-        universal_newlines=True,
     )
     return json.loads(hw_subproc.stdout)
 
 
-def check_ven(vendor):
+def check_ven(vendor: str) -> str:
     if "intel" in vendor.lower():
         vendor = "intel"
     elif "amd" in vendor.lower() or "advanced micro devices" in vendor.lower():
@@ -86,13 +70,14 @@ def check_ven(vendor):
     return vendor
 
 
-def get_platform_id(platforms: list) -> str:
+def get_platform_id(platforms: list[dict[str, Any]]) -> str:
     os = platform.system().lower()
     if os == "darwin":
         os = "mac"
     for element in platforms:
         if os == element["type"].lower():
             return element["id"]
+    raise ValueError("Could not find platform id")
 
 
 def get_os_info() -> dict:
@@ -107,7 +92,7 @@ def get_os_info() -> dict:
         "support_url",
         "bug_report_url",
     ]
-    os_element = dict()
+    os_element = {}
 
     # Getting system name, release and version
     os_element["name"] = platform.system()
@@ -154,7 +139,7 @@ def get_os_info() -> dict:
 
 
 def get_gpu_info() -> list:
-    gpu_elements = list()
+    gpu_elements = []
     if platform.system() == "Windows":
         c = wmi.WMI()
         gpus = c.Win32_VideoController()
@@ -216,13 +201,13 @@ def get_gpu_info() -> list:
         print()
         print("ERROR: Unsupported OS, Hardware information not supported")
         input("Press any key to exit")
-        exit()
+        sys.exit()
     return gpu_elements
 
 
 def get_cpu_info() -> list:
     cpu_info = cpuinfo.get_cpu_info()
-    cpu_elements = list()
+    cpu_elements = []
 
     # This field might not exist on macOS
     if "vendor_id_raw" in cpu_info:
@@ -239,10 +224,7 @@ def get_cpu_info() -> list:
         vendor = "Generic CPU"
 
     # Some platforms don't provide hz_advertised, using 0 as placeholder
-    if "hz_advertised" in cpu_info:
-        cpu_hz = max(cpu_info["hz_advertised"])
-    else:
-        cpu_hz = 0
+    cpu_hz = max(cpu_info["hz_advertised"]) if "hz_advertised" in cpu_info else 0
 
     cpu_element = {
         "product": cpu_info["brand_raw"],
@@ -258,7 +240,7 @@ def get_cpu_info() -> list:
 
 
 def get_ram_info() -> list:
-    ram_modules = list()
+    ram_modules = []
     if platform.system() == "Windows":
         c = wmi.WMI()
         for ram in c.Win32_PhysicalMemory():
@@ -280,14 +262,13 @@ def get_ram_info() -> list:
         memory_info = run_lshw("memory")
         for memory in memory_info:
             if memory["id"] == "memory" and "size" in memory and "units" in memory:
-                if memory["units"] == "bytes":
-                    memory["units"] == "b"
-                elif memory["units"] == "kilobytes":
-                    memory["units"] == "kb"
-                elif memory["units"] == "megabytes":
-                    memory["units"] == "mb"
-                elif memory["units"] == "gigabytes":
-                    memory["units"] == "gb"
+                units = {
+                    "bytes": "b",
+                    "kilobytes": "kb",
+                    "megabytes": "mb",
+                    "gigabytes": "gb",
+                }
+                memory["units"] = units.get(memory["units"], memory["units"])
                 ram_modules.append(memory)
 
     # macOS

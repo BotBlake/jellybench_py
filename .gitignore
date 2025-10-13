@@ -1,11 +1,16 @@
 #Ignoring temp-files used by the tool
+**/jellybench_data/
 **/videos/*
 **/ffmpeg/*
 output.json
-ffmpeg_err_log.txt
 
-#Python Cache
+# Logfiles
+jellybench.log
+jellybench-ffmpeg.log
+
+#Python Cache + venv
 *pyc
+.venv
 
 #Poetry builds
 /dist/*
@@ -15,6 +20,6 @@ ffmpeg_err_log.txt
 # macOS finder index files
 .DS_Store
 
-# Logfiles
-jellybench.log
-jellybench-ffmpeg.log
+# Legacy files
+# These files are no longer used by the tool, but may still be present in some repositories
+**/ffmpeg_err_log.txt
