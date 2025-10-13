@@ -744,6 +744,7 @@ def cli() -> None:
             else:
                 api_mode = "server"
     if api_mode == "server":
+        server_data = None
         try:
             api_client = ApiClient(args.server_url, main_log)  # Initialize API client
             platforms = api_client.get_platforms()  # Fetch supported platforms
@@ -811,7 +812,6 @@ def cli() -> None:
     if platforms:
         # Set platform_id if not manually set by user
         platform_id = hwi.get_platform_id(platforms)
-    if not used_platform:
         used_platform = next(
             (item for item in platforms if item["id"] == platform_id), None
         )
