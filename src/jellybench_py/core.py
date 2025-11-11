@@ -301,13 +301,7 @@ def benchmark(
     last_speed = 0
 
     if debug:
-        print_debug(
-            f"> > > ffmpeg command: {ffmpeg_cmd}"
-            
-            
-            
-            
-            )
+        print_debug(f"> > > ffmpeg command: {ffmpeg_cmd}")
 
     while run:
         assert max_pass < min_fail  # noqa: S101
