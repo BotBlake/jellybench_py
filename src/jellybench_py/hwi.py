@@ -30,44 +30,58 @@ if platform.system() == "Windows":
     import wmi
 
 
-def run_lshw(hardware: str) -> list[dict[str, Any]]:
-    lshw_path = shutil.which("lshw")
-    if not lshw_path:
-        print("Error")
+class HardwareManager:
+    def __init__(self):
         print()
-        print("ERROR: lshw not installed. You may install it and try again.")
-        input("Press any key to exit")
-        sys.exit()
-    hw_subproc = subprocess.run(
-        [lshw_path, "-json", "-class", hardware],
-        text=True,
-        capture_output=True,
-        stdin=subprocess.PIPE,
-    )
-    hw_output = json.loads(hw_subproc.stdout)
-    return hw_output
 
+    class WindowsManager:
+        def __init__(self):
+            print()
 
-def run_macos_sp(data_type: str) -> dict:
-    # available data types can be found here "https://real-world-systems.com/docs/system_profiler.1.html"
-    # or by simply running `systep_profiler -listDataTypes`
-    hw_subproc = subprocess.run(
-        ["system_profiler", "-json", "-detailLevel", "mini", data_type],
-        text=True,
-        capture_output=True,
-        stdin=subprocess.PIPE,
-    )
-    return json.loads(hw_subproc.stdout)
+    class LinuxManager:
+        def __init__(self):
+            print()
 
+        def run_lshw(self, hardware: str) -> list[dict[str, Any]]:
+            lshw_path = shutil.which("lshw")
+            if not lshw_path:
+                print("Error")
+                print()
+                print("ERROR: lshw not installed. You may install it and try again.")
+                input("Press any key to exit")
+                sys.exit()
+            hw_subproc = subprocess.run(
+                [lshw_path, "-json", "-class", hardware],
+                text=True,
+                capture_output=True,
+                stdin=subprocess.PIPE,
+            )
+            hw_output = json.loads(hw_subproc.stdout)
+            return hw_output
 
-def check_ven(vendor: str) -> str:
-    if "intel" in vendor.lower():
-        vendor = "intel"
-    elif "amd" in vendor.lower() or "advanced micro devices" in vendor.lower():
-        vendor = "amd"
-    elif "nvidia" in vendor.lower():
-        vendor = "nvidia"
-    return vendor
+    class MacOSManager:
+        def __init__(self):
+            print()
+
+        def run_macos_sp(self, data_type: str) -> dict:
+            # available data types can be found here "https://real-world-systems.com/docs/system_profiler.1.html"
+            # or by simply running `systep_profiler -listDataTypes`
+            hw_subproc = subprocess.run(
+                ["system_profiler", "-json", "-detailLevel", "mini", data_type],
+                text=True,
+                capture_output=True,
+                stdin=subprocess.PIPE,
+            )
+            return json.loads(hw_subproc.stdout)
+
+    def check_ven(self, vendor: str) -> str:
+        if "intel" in vendor.lower():
+            vendor = "intel"
+        elif "amd" in vendor.lower() or "advanced micro devices" in vendor.lower():
+            vendor = "amd"
+        elif "nvidia" in vendor.lower():
+            vendor = "nvidia"
+        return vendor
 
 
 def get_platform_id(platforms: list[dict[str, Any]]) -> str:
