@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import json
+import math
 import platform
 import shutil
 import subprocess
@@ -97,6 +98,86 @@ class CPU:
             return cls.UNKNOWN
 
 
+@dataclass(slots=True)
+class Memory:
+    id: str
+    units: Memory.SizeUnit
+    size: float
+    speed: int | None
+    vendor: str | None
+
+    class SizeUnit(str, Enum):
+        BYTE = "b"
+        KB = "kb"
+        MB = "mb"
+        GB = "gb"
+        TB = "tb"
+
+        @classmethod
+        def from_string(cls, unit: str) -> Memory.SizeUnit:
+            unit = unit.lower().strip()
+            if unit in ("b", "byte", "bytes"):
+                return cls.BYTE
+            if unit in ("kb", "kilobyte", "kilobytes"):
+                return cls.KB
+            if unit in ("mb", "megabyte", "megabytes"):
+                return cls.MB
+            if unit in ("gb", "gigabyte", "gigabytes"):
+                return cls.GB
+            if unit in ("tb", "terabyte", "terabytes"):
+                return cls.TB
+            raise ValueError(f"Unknown size unit: {unit}")
+
+    def __post_init__(self) -> None:
+        if isinstance(self.units, str):
+            self.units = self.SizeUnit.from_string(self.units)
+
+        self.units, self.size = self.parse_unit(self.units, self.size)
+
+    @classmethod
+    def parse_unit(cls, unit: SizeUnit, size: float) -> tuple[Memory.SizeUnit, float]:
+        """
+        Converts a size unit string to a Memory.SizeUnit enum and returns the size in the appropriate unit.
+        Always parses to the closest unit (e.g. 1024 bytes will be parsed as 1 KB).
+
+        Args:
+            unit (str): The size unit string (e.g. "bytes", "kilobytes", etc.).
+            size (float): The size value in {unit} (e.g. b, kb, mb, gb).
+
+        Returns:
+            Memory.SizeUnit: The parsed size unit.
+            float: The size value converted to the appropriate unit.
+        """
+        _ORDERED_UNITS = [
+            cls.SizeUnit.BYTE,
+            cls.SizeUnit.KB,
+            cls.SizeUnit.MB,
+            cls.SizeUnit.GB,
+            cls.SizeUnit.TB,
+        ]
+
+        factor = 1024 ** _ORDERED_UNITS.index(unit)
+
+        # Converted size to bytes
+        unit = cls.SizeUnit.BYTE
+        size = size * factor
+
+        # Convert to the closest unit
+        # log base 1024 tells us the ideal exponent directly
+        ideal_power = int(math.log(size, 1024))
+
+        # clamp into supported range
+        ideal_power = max(0, min(ideal_power, len(_ORDERED_UNITS) - 1))
+
+        unit = _ORDERED_UNITS[ideal_power]
+        size = size / (1024**ideal_power)
+
+        # round to 2 decimal places for readability
+        size = round(size, 2)
+
+        return unit, size
+
+
 class PlatformManager:
     def __init__(self):
         pass
@@ -104,12 +185,15 @@ class PlatformManager:
     def get_gpu_info(self) -> list[GPU]:
         return list[GPU]()
 
+    def get_memory_info(self) -> list[Memory]:
+        return list[Memory]()
+
     def get_os_info(self) -> dict:
         return dict()
 
 
 class HardwareManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.platform = platform.system().lower()
         # HWA Server uses "mac" as id for macOS, but platform.system() returns "Darwin"
         self.platform = "mac" if self.platform == "darwin" else self.platform
@@ -128,7 +212,7 @@ class HardwareManager:
         system_info = {
             "os": get_os_info(),
             "cpu": [asdict(cpu) for cpu in self.get_cpu_info()],
-            # "memory": get_ram_info(),
+            "memory": [asdict(mem) for mem in self.platform_manager.get_memory_info()],
             "gpu": [asdict(gpu) for gpu in self.platform_manager.get_gpu_info()],
         }
         return system_info
@@ -159,7 +243,7 @@ class HardwareManager:
         return cpu_elements
 
     class WindowsManager(PlatformManager):
-        def __init__(self):
+        def __init__(self) -> None:
             # Only Import wmi if WindowsManager is used (Wmi is Windows-only)
             import wmi  # type: ignore
 
@@ -184,8 +268,21 @@ class HardwareManager:
                 gpu_elements.append(gpu_element)
             return gpu_elements
 
+        def get_memory_info(self) -> list[Memory]:
+            ram_modules = list[Memory]()
+            for ram in self.windows_management.Win32_PhysicalMemory():
+                ram_module = Memory(
+                    id=ram.Tag.strip().replace(" ", "_"),
+                    units=Memory.SizeUnit.BYTE,
+                    size=int(ram.Capacity),
+                    speed=ram.Speed if ram.Speed else None,
+                    vendor=ram.Manufacturer.strip() if ram.Manufacturer else None,
+                )
+                ram_modules.append(ram_module)
+            return ram_modules
+
     class LinuxManager(PlatformManager):
-        def __init__(self):
+        def __init__(self) -> None:
             self.lshw_path = self._find_lshw()
 
         def _find_lshw(self) -> str:
@@ -228,9 +325,36 @@ class HardwareManager:
                 gpu_id += 1
             return gpu_elements
 
+        def get_memory_info(self) -> list[Memory]:
+            ram_modules = list[Memory]()
+            ram_info = self._run_lshw("memory")
+            for ram in ram_info:
+                if ram.get("class", "") != "memory":
+                    continue
+                size = int(ram.get("size", 0))
+                if size == 0:
+                    continue
+
+                if "vendor" in ram:
+                    vendor = ram["vendor"].strip()
+                elif "description" in ram:
+                    vendor = ram["description"].strip()
+                else:
+                    vendor = None
+
+                ram_module = Memory(
+                    id=ram.get("physid", "").strip().replace(" ", "_"),
+                    units=Memory.SizeUnit.from_string(ram.get("units", "b")),
+                    size=size,
+                    speed=int(ram.get("clock", 0)) if "clock" in ram else None,
+                    vendor=vendor,
+                )
+                ram_modules.append(ram_module)
+            return ram_modules
+
     class MacOSManager(PlatformManager):
-        def __init__(self):
-            print()
+        def __init__(self) -> None:
+            pass
 
         def _run_macos_sp(self, hardware_type: str) -> dict[str, Any]:
             # available data types can be found here "https://real-world-systems.com/docs/system_profiler.1.html"
@@ -326,34 +450,11 @@ def get_os_info() -> dict:
 def get_ram_info() -> list:
     ram_modules = []
     if platform.system() == "Windows":
-        c = wmi.WMI()
-        for ram in c.Win32_PhysicalMemory():
-            capacity = int(ram.Capacity) // (1024**3)  # Convert bytes to gigabytes
-            speed = ram.Speed
-            form_factor = ram.FormFactor
-            ram_module = {
-                "id": ram.Tag.strip().replace(" ", "_"),
-                "class": "memory",
-                "physid": ram.PartNumber,
-                "units": "gigabytes",
-                "size": capacity,
-                "vendor": ram.Manufacturer,
-                "Speed": speed,
-                "FormFactor": form_factor,
-            }
-            ram_modules.append(ram_module)
+        # Moved to WindowsManager
+        pass
     elif platform.system() == "Linux":
-        memory_info = run_lshw("memory")
-        for memory in memory_info:
-            if memory["id"] == "memory" and "size" in memory and "units" in memory:
-                units = {
-                    "bytes": "b",
-                    "kilobytes": "kb",
-                    "megabytes": "mb",
-                    "gigabytes": "gb",
-                }
-                memory["units"] = units.get(memory["units"], memory["units"])
-                ram_modules.append(memory)
+        # Moved to LinuxManager
+        pass
 
     # macOS
     elif platform.system() == "Darwin":
