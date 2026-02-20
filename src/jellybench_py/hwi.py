@@ -48,7 +48,7 @@ class GPU:
     class Configuration:
         driver: str | None
 
-    class Vendor(str, Enum):
+    class Vendor(Enum):
         NVIDIA = "nvidia"
         AMD = "amd"
         INTEL = "intel"
@@ -77,7 +77,7 @@ class CPU:
     architecture: str
     hz_advertised: int | None
 
-    class Vendor(str, Enum):
+    class Vendor(Enum):
         APPLE = "apple"
         AMD = "amd"
         INTEL = "intel"
@@ -106,7 +106,7 @@ class Memory:
     speed: int | None
     vendor: str | None
 
-    class SizeUnit(str, Enum):
+    class SizeUnit(Enum):
         BYTE = "b"
         KB = "kb"
         MB = "mb"
@@ -148,7 +148,7 @@ class Memory:
             Memory.SizeUnit: The parsed size unit.
             float: The size value converted to the appropriate unit.
         """
-        _ORDERED_UNITS = [
+        _ordered_units = [
             cls.SizeUnit.BYTE,
             cls.SizeUnit.KB,
             cls.SizeUnit.MB,
@@ -156,7 +156,7 @@ class Memory:
             cls.SizeUnit.TB,
         ]
 
-        factor = 1024 ** _ORDERED_UNITS.index(unit)
+        factor = 1024 ** _ordered_units.index(unit)
 
         # Converted size to bytes
         unit = cls.SizeUnit.BYTE
@@ -167,9 +167,9 @@ class Memory:
         ideal_power = int(math.log(size, 1024))
 
         # clamp into supported range
-        ideal_power = max(0, min(ideal_power, len(_ORDERED_UNITS) - 1))
+        ideal_power = max(0, min(ideal_power, len(_ordered_units) - 1))
 
-        unit = _ORDERED_UNITS[ideal_power]
+        unit = _ordered_units[ideal_power]
         size = size / (1024**ideal_power)
 
         # round to 2 decimal places for readability
@@ -178,8 +178,15 @@ class Memory:
         return unit, size
 
 
+class EnumEncoder(json.JSONEncoder):
+    def default(self, obj: Any) -> json.JSONEncoder:
+        if isinstance(obj, Enum):
+            return obj.value
+        return super().default(obj)
+
+
 class PlatformManager:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def get_gpu_info(self) -> list[GPU]:
@@ -188,8 +195,8 @@ class PlatformManager:
     def get_memory_info(self) -> list[Memory]:
         return list[Memory]()
 
-    def get_os_info(self) -> dict:
-        return dict()
+    def get_os_info(self) -> dict[str, Any]:
+        return dict[str, Any]()
 
 
 class HardwareManager:
@@ -245,7 +252,7 @@ class HardwareManager:
     class WindowsManager(PlatformManager):
         def __init__(self) -> None:
             # Only Import wmi if WindowsManager is used (Wmi is Windows-only)
-            import wmi  # type: ignore
+            import wmi  # noqa: PLC0415
 
             self.windows_management = wmi.WMI()
 
@@ -263,7 +270,7 @@ class HardwareManager:
                     vendor=GPU.Vendor.parse(vendor),
                     physid=gpu.DeviceID.strip(),
                     businfo=gpu.PNPDeviceID.strip(),
-                    configuration=GPU.Configuration(driver=driver if driver else None),
+                    configuration=GPU.Configuration(driver=driver or None),
                 )
                 gpu_elements.append(gpu_element)
             return gpu_elements
@@ -275,7 +282,7 @@ class HardwareManager:
                     id=ram.Tag.strip().replace(" ", "_"),
                     units=Memory.SizeUnit.BYTE,
                     size=int(ram.Capacity),
-                    speed=ram.Speed if ram.Speed else None,
+                    speed=ram.Speed or None,
                     vendor=ram.Manufacturer.strip() if ram.Manufacturer else None,
                 )
                 ram_modules.append(ram_module)
@@ -431,7 +438,7 @@ def get_os_info() -> dict:
 
     # macOS
     elif os_element["name"] == "Darwin":
-        sp = run_macos_sp("SPSoftwareDataType")
+        sp = run_macos_sp("SPSoftwareDataType")  # noqa: F821
         raw: str = sp["SPSoftwareDataType"][0]["os_version"].split()
 
         os_element["name"] = raw[0]
@@ -458,7 +465,7 @@ def get_ram_info() -> list:
 
     # macOS
     elif platform.system() == "Darwin":
-        sp = run_macos_sp("SPMemoryDataType")
+        sp = run_macos_sp("SPMemoryDataType")  # noqa: F821
         for i in range(len(sp["SPMemoryDataType"])):
             raw = sp["SPMemoryDataType"][i]
             cap_info = raw["SPMemoryDataType"].split()
@@ -478,4 +485,4 @@ def get_ram_info() -> list:
 if __name__ == "__main__":
     hw_man = HardwareManager()
     system_info = hw_man.get_system_info()
-    print(json.dumps(system_info, indent=4))
+    print(json.dumps(system_info, indent=4, cls=EnumEncoder))
