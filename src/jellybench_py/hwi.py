@@ -17,32 +17,178 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 ##########################################################################################
+from __future__ import annotations
+
 import json
 import platform
 import shutil
 import subprocess
 import sys
+from dataclasses import asdict, dataclass
+from enum import Enum
 from typing import Any
 
 import cpuinfo
 
-if platform.system() == "Windows":
-    import wmi
+# Dataclasses and Enums for Hardware Information
+
+
+@dataclass(slots=True)
+class GPU:
+    id: int
+    description: str
+    product: str
+    vendor: GPU.Vendor
+    physid: str
+    businfo: str
+    configuration: GPU.Configuration
+
+    @dataclass(slots=True)
+    class Configuration:
+        driver: str | None
+
+    class Vendor(str, Enum):
+        NVIDIA = "nvidia"
+        AMD = "amd"
+        INTEL = "intel"
+        UNKNOWN = "unknown"
+
+        @classmethod
+        def parse(cls, text: str | None) -> GPU.Vendor:
+            if not text:
+                return cls.UNKNOWN
+
+            t = text.lower()
+            if "nvidia" in t:
+                return cls.NVIDIA
+            if "amd" in t or "advanced micro devices" in t:
+                return cls.AMD
+            if "intel" in t:
+                return cls.INTEL
+            return cls.UNKNOWN
+
+
+@dataclass(slots=True)
+class CPU:
+    product: str
+    vendor: CPU.Vendor
+    cores: int
+    architecture: str
+    hz_advertised: int | None
+
+    class Vendor(str, Enum):
+        APPLE = "apple"
+        AMD = "amd"
+        INTEL = "intel"
+        UNKNOWN = "unknown"
+
+        @classmethod
+        def parse(cls, text: str | None) -> CPU.Vendor:
+            if not text:
+                return cls.UNKNOWN
+
+            t = text.lower()
+            if "intel" in t:
+                return cls.INTEL
+            if "amd" in t or "advanced micro devices" in t:
+                return cls.AMD
+            if "apple" in t:
+                return cls.APPLE
+            return cls.UNKNOWN
+
+
+class PlatformManager:
+    def __init__(self):
+        pass
+
+    def get_gpu_info(self) -> list[GPU]:
+        return list[GPU]()
+
+    def get_os_info(self) -> dict:
+        return dict()
 
 
 class HardwareManager:
     def __init__(self):
-        print()
+        self.platform = platform.system().lower()
+        # HWA Server uses "mac" as id for macOS, but platform.system() returns "Darwin"
+        self.platform = "mac" if self.platform == "darwin" else self.platform
+        self.platform_manager = self._get_manager()
 
-    class WindowsManager:
+    def _get_manager(self) -> PlatformManager:
+        if self.platform == "windows":
+            return self.WindowsManager()
+        if self.platform == "linux":
+            return self.LinuxManager()
+        if self.platform == "mac":
+            return self.MacOSManager()
+        raise NotImplementedError(f"Platform {self.platform} is not supported.")
+
+    def get_system_info(self) -> dict:
+        system_info = {
+            "os": get_os_info(),
+            "cpu": [asdict(cpu) for cpu in self.get_cpu_info()],
+            # "memory": get_ram_info(),
+            "gpu": [asdict(gpu) for gpu in self.platform_manager.get_gpu_info()],
+        }
+        return system_info
+
+    def get_cpu_info(self) -> list[CPU]:
+        cpu_info = cpuinfo.get_cpu_info()
+        cpu_elements = []
+
+        vendor = CPU.Vendor.parse(
+            cpu_info.get(
+                "vendor_id_raw",  # This might be missing on MacOS
+                cpu_info.get("brand_raw", None),
+            )
+        )
+
+        # Some platforms don't provide hz_advertised, using None as placeholder
+        cpu_hz = max(cpu_info["hz_advertised"]) if "hz_advertised" in cpu_info else None
+
+        cpu_element = CPU(
+            product=cpu_info["brand_raw"],
+            vendor=vendor,
+            cores=cpu_info["count"],
+            architecture=cpu_info["arch_string_raw"],
+            hz_advertised=cpu_hz,
+        )
+        cpu_elements.append(cpu_element)
+
+        return cpu_elements
+
+    class WindowsManager(PlatformManager):
         def __init__(self):
-            print()
+            # Only Import wmi if WindowsManager is used (Wmi is Windows-only)
+            import wmi  # type: ignore
 
-    class LinuxManager:
+            self.windows_management = wmi.WMI()
+
+        def get_gpu_info(self) -> list[GPU]:
+            gpu_elements = list[GPU]()
+            gpus = self.windows_management.Win32_VideoController()
+
+            for i, gpu in enumerate(gpus):
+                driver = gpu.DriverVersion.strip()
+                vendor = gpu.AdapterCompatibility.strip().lower()
+                gpu_element = GPU(
+                    id=i + 1,
+                    description=gpu.creationClassName.strip(),
+                    product=gpu.Name,
+                    vendor=GPU.Vendor.parse(vendor),
+                    physid=gpu.DeviceID.strip(),
+                    businfo=gpu.PNPDeviceID.strip(),
+                    configuration=GPU.Configuration(driver=driver if driver else None),
+                )
+                gpu_elements.append(gpu_element)
+            return gpu_elements
+
+    class LinuxManager(PlatformManager):
         def __init__(self):
-            print()
+            self.lshw_path = self._find_lshw()
 
-        def run_lshw(self, hardware: str) -> list[dict[str, Any]]:
+        def _find_lshw(self) -> str:
             lshw_path = shutil.which("lshw")
             if not lshw_path:
                 print("Error")
@@ -50,8 +196,11 @@ class HardwareManager:
                 print("ERROR: lshw not installed. You may install it and try again.")
                 input("Press any key to exit")
                 sys.exit()
+            return lshw_path
+
+        def _run_lshw(self, hardware_type: str) -> list[dict[str, Any]]:
             hw_subproc = subprocess.run(
-                [lshw_path, "-json", "-class", hardware],
+                [self.lshw_path, "-json", "-class", hardware_type],
                 text=True,
                 capture_output=True,
                 stdin=subprocess.PIPE,
@@ -59,39 +208,61 @@ class HardwareManager:
             hw_output = json.loads(hw_subproc.stdout)
             return hw_output
 
-    class MacOSManager:
+        def get_gpu_info(self) -> list[GPU]:
+            gpu_elements = list[GPU]()
+            gpus_info = self._run_lshw("display")  # Display fetches info from lshw
+            gpu_id = 1
+            for gpu in gpus_info:
+                driver = gpu.get("configuration", {}).get("driver", None)
+                vendor = GPU.Vendor.parse(gpu.get("vendor", gpu.get("product", None)))
+                gpu_element = GPU(
+                    id=gpu_id,
+                    description=gpu.get("description", "Unknown"),
+                    product=gpu.get("product", "Unknown"),
+                    vendor=vendor,
+                    physid=gpu.get("physid", ""),
+                    businfo=gpu.get("businfo", ""),
+                    configuration=GPU.Configuration(driver=driver),
+                )
+                gpu_elements.append(gpu_element)
+                gpu_id += 1
+            return gpu_elements
+
+    class MacOSManager(PlatformManager):
         def __init__(self):
             print()
 
-        def run_macos_sp(self, data_type: str) -> dict:
+        def _run_macos_sp(self, hardware_type: str) -> dict[str, Any]:
             # available data types can be found here "https://real-world-systems.com/docs/system_profiler.1.html"
             # or by simply running `systep_profiler -listDataTypes`
             hw_subproc = subprocess.run(
-                ["system_profiler", "-json", "-detailLevel", "mini", data_type],
+                ["system_profiler", "-json", "-detailLevel", "mini", hardware_type],
                 text=True,
                 capture_output=True,
                 stdin=subprocess.PIPE,
             )
             return json.loads(hw_subproc.stdout)
 
-    def check_ven(self, vendor: str) -> str:
-        if "intel" in vendor.lower():
-            vendor = "intel"
-        elif "amd" in vendor.lower() or "advanced micro devices" in vendor.lower():
-            vendor = "amd"
-        elif "nvidia" in vendor.lower():
-            vendor = "nvidia"
-        return vendor
-
-
-def get_platform_id(platforms: list[dict[str, Any]]) -> str:
-    os = platform.system().lower()
-    if os == "darwin":
-        os = "mac"
-    for element in platforms:
-        if os == element["type"].lower():
-            return element["id"]
-    raise ValueError("Could not find platform id")
+        def get_gpu_info(self) -> list[GPU]:
+            gpu_elements = list[GPU]()
+            gpus = self._run_macos_sp("SPDisplaysDataType")["SPDisplaysDataType"]
+            for i, gpu in enumerate(gpus):
+                vendor = GPU.Vendor.parse(
+                    gpu["spdisplays_vendor"][13:]
+                    if "sppci_vendor" in gpu["spdisplays_vendor"]
+                    else gpu["spdisplays_vendor"]
+                )
+                gpu_element = GPU(
+                    id=i + 1,
+                    description=gpu["sppci_device_type"],
+                    product=gpu["sppci_model"],
+                    vendor=vendor,
+                    physid="",
+                    businfo=gpu["sppci_bus"],
+                    configuration=GPU.Configuration(driver=None),
+                )
+                gpu_elements.append(gpu_element)
+            return gpu_elements
 
 
 def get_os_info() -> dict:
@@ -152,107 +323,6 @@ def get_os_info() -> dict:
     return os_element
 
 
-def get_gpu_info() -> list:
-    gpu_elements = []
-    if platform.system() == "Windows":
-        c = wmi.WMI()
-        gpus = c.Win32_VideoController()
-
-        for i, gpu in enumerate(gpus):
-            configuration = {
-                "driver": gpu.DriverVersion.strip(),
-            }
-
-            vendor = gpu.AdapterCompatibility.strip().lower()
-            gpu_element = {
-                "id": f"GPU{i + 1}",
-                "class": "display",
-                "description": gpu.creationClassName.strip(),
-                "product": gpu.Name,
-                "vendor": check_ven(vendor),
-                "physid": gpu.DeviceID.strip(),
-                "businfo": gpu.PNPDeviceID.strip(),
-                "configuration": configuration,
-            }
-            gpu_elements.append(gpu_element)
-
-    elif platform.system() == "Linux":
-        gpus_info = run_lshw("display")  # Display fetches info from lshw
-        for gpu in gpus_info:
-            if "vendor" not in gpu:
-                if "product" in gpu:
-                    gpu["vendor"] = check_ven(gpu["product"])
-                else:
-                    gpu["vendor"] = "Unknown"
-            else:
-                gpu["vendor"] = check_ven(gpu["vendor"])
-            gpu_elements.append(gpu)
-
-    # macOS
-    elif platform.system() == "Darwin":
-        sp = run_macos_sp("SPDisplaysDataType")
-        gpus = sp["SPDisplaysDataType"]
-        for i in range(len(gpus)):
-            gpu = gpus[i]
-            vendor = (
-                gpu["spdisplays_vendor"][13:]
-                if "sppci_vendor" in gpu["spdisplays_vendor"]
-                else gpu["spdisplays_vendor"]
-            )
-            entry = {
-                "id": str(i),
-                "class": "display",
-                "description": gpu["sppci_device_type"],
-                "product": gpu["sppci_model"],
-                "vendor": vendor,
-                "businfo": gpu["sppci_bus"],
-            }
-
-            gpu_elements.append(entry)
-
-    else:
-        print("Error")
-        print()
-        print("ERROR: Unsupported OS, Hardware information not supported")
-        input("Press any key to exit")
-        sys.exit()
-    return gpu_elements
-
-
-def get_cpu_info() -> list:
-    cpu_info = cpuinfo.get_cpu_info()
-    cpu_elements = []
-
-    # This field might not exist on macOS
-    if "vendor_id_raw" in cpu_info:
-        vendor = cpu_info["vendor_id_raw"]
-        if "intel" in vendor.lower():
-            vendor = "Intel"
-        elif "amd" in vendor.lower() or "advanced micro devices" in vendor.lower():
-            vendor = "Amd"
-
-    elif "Apple" in cpu_info["brand_raw"]:
-        vendor = "Apple"
-
-    else:
-        vendor = "Generic CPU"
-
-    # Some platforms don't provide hz_advertised, using 0 as placeholder
-    cpu_hz = max(cpu_info["hz_advertised"]) if "hz_advertised" in cpu_info else 0
-
-    cpu_element = {
-        "product": cpu_info["brand_raw"],
-        "vendor": vendor,
-        "cores": cpu_info["count"],
-        "architecture": cpu_info["arch_string_raw"],
-        "hz_advertised": cpu_hz,
-        # "capabilities": cpu_info["flags"],  <- Temporarily Ignoring CPU Features
-    }
-    cpu_elements.append(cpu_element)
-
-    return cpu_elements
-
-
 def get_ram_info() -> list:
     ram_modules = []
     if platform.system() == "Windows":
@@ -304,16 +374,7 @@ def get_ram_info() -> list:
     return ram_modules
 
 
-def get_system_info() -> dict:
-    system_info = {
-        "os": get_os_info(),
-        "cpu": get_cpu_info(),
-        "memory": get_ram_info(),
-        "gpu": get_gpu_info(),
-    }
-    return system_info
-
-
 if __name__ == "__main__":
-    system_info = get_system_info()
+    hw_man = HardwareManager()
+    system_info = hw_man.get_system_info()
     print(json.dumps(system_info, indent=4))
