@@ -25,7 +25,7 @@ import platform
 import shutil
 import subprocess
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from enum import Enum
 from typing import Any
 
@@ -177,6 +177,37 @@ class Memory:
 
         return unit, size
 
+@dataclass(slots=True)
+class OperatingSystem:
+    pretty_name: str
+    name: str
+    version_id: str
+    version: str
+    version_codename: str
+    id: OperatingSystem.ID
+    home_url: str
+    support_url: str
+    bug_report_url: str
+
+    class ID:
+        WINDOWS = "windows"
+        LINUX = "linux"
+        MACOS = "macos"
+        UNKNOWN = "unknown"
+
+        @classmethod
+        def parse(cls, text: str | None) -> OperatingSystem.ID:
+            if not text:
+                return cls.UNKNOWN
+
+            t = text.lower()
+            if "windows" in t:
+                return cls.WINDOWS
+            if "linux" in t:
+                return cls.LINUX
+            if "macos" in t or "mac os" in t:
+                return cls.MACOS
+            return cls.UNKNOWN
 
 class EnumEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> json.JSONEncoder:
@@ -195,8 +226,8 @@ class PlatformManager:
     def get_memory_info(self) -> list[Memory]:
         return list[Memory]()
 
-    def get_os_info(self) -> dict[str, Any]:
-        return dict[str, Any]()
+    def get_os_info(self) -> OperatingSystem:
+        return OperatingSystem()
 
 
 class HardwareManager:
@@ -217,7 +248,7 @@ class HardwareManager:
 
     def get_system_info(self) -> dict:
         system_info = {
-            "os": get_os_info(),
+            "os": asdict(self.platform_manager.get_os_info()),
             "cpu": [asdict(cpu) for cpu in self.get_cpu_info()],
             "memory": [asdict(mem) for mem in self.platform_manager.get_memory_info()],
             "gpu": [asdict(gpu) for gpu in self.platform_manager.get_gpu_info()],
@@ -287,6 +318,21 @@ class HardwareManager:
                 )
                 ram_modules.append(ram_module)
             return ram_modules
+
+        def get_os_info(self) -> OperatingSystem:
+            required = [field.name for field in fields(OperatingSystem)]
+            os_element = {}
+            os_element = dict.fromkeys(required, "") # Initialize all required fields with empty strings
+            os_element["name"] = platform.system()
+            os_element["version"] = platform.version()
+            os_element["version_id"] = platform.release()
+            os_element["pretty_name"] = platform.system() + " " + platform.release()
+            os_element["id"] = OperatingSystem.ID.parse("windows")
+            os_element["version_codename"] = "win32"
+            os_element["home_url"] = "https://www.microsoft.com/windows"
+            os_element["support_url"] = "https://support.microsoft.com"
+            os_element["bug_report_url"] = "https://support.microsoft.com/contactus/"
+            return OperatingSystem(**os_element)
 
     class LinuxManager(PlatformManager):
         def __init__(self) -> None:
@@ -359,6 +405,26 @@ class HardwareManager:
                 ram_modules.append(ram_module)
             return ram_modules
 
+        def get_os_info(self) -> OperatingSystem:
+            required = [field.name for field in fields(OperatingSystem)]
+            os_element = {}
+            os_element = dict.fromkeys(required, "") # Initialize all required fields with empty strings
+            os_element["name"] = platform.system()
+            os_element["version"] = platform.version()
+            os_element["version_id"] = platform.release()
+            try:
+                with open("/etc/os-release") as f:
+                    for line in f:
+                        key, value = line.strip().split("=", 1)
+                        value = value.strip('"')
+                        if key.lower() in required:
+                            os_element[key.lower()] = value
+            except FileNotFoundError:
+                os_element["pretty_name"] = "Linux (Unknown Distro)"
+                os_element["id"] = "linux"
+            os_element["id"] = OperatingSystem.ID.parse(os_element.get("id", None))
+            return OperatingSystem(**os_element)
+
     class MacOSManager(PlatformManager):
         def __init__(self) -> None:
             pass
@@ -395,91 +461,41 @@ class HardwareManager:
                 gpu_elements.append(gpu_element)
             return gpu_elements
 
+        def get_memory_info(self) -> list[Memory]:
+            ram_modules = list[Memory]()
+            sp = self._run_macos_sp("SPMemoryDataType")  # noqa: F821
+            for i in range(len(sp["SPMemoryDataType"])):
+                raw = sp["SPMemoryDataType"][i]
+                cap_info = raw["SPMemoryDataType"].split()
+                entry = {
+                    "id": str(i),
+                    "class": "memory",
+                    "units": cap_info[1].lower(),
+                    "size": int(cap_info[0]),
+                    "vendor": raw["dimm_manufacturer"],
+                    "FormFactor": raw["dimm_type"],
+                }
+                ram_modules.append(Memory(**entry))
+            return ram_modules
 
-def get_os_info() -> dict:
-    required = [
-        "pretty_name",
-        "name",
-        "version_id",
-        "version",
-        "version_codename",
-        "id",
-        "home_url",
-        "support_url",
-        "bug_report_url",
-    ]
-    os_element = {}
+        def get_os_info(self) -> OperatingSystem:
+            required = [field.name for field in fields(OperatingSystem)]
+            os_element = {}
+            os_element = dict.fromkeys(required, "") # Initialize all required fields with empty strings
 
-    # Getting system name, release and version
-    os_element["name"] = platform.system()
-    os_element["version"] = platform.version()
-    os_element["version_id"] = platform.release()
+            os_data = self._run_macos_sp("SPSoftwareDataType")["SPSoftwareDataType"]  # noqa: F821
+            os_data = os_data[0]["os_version"].split()
 
-    # Filling all possible values
-    if os_element["name"] == "Linux":
-        try:
-            with open("/etc/os-release") as f:
-                for line in f:
-                    key, value = line.strip().split("=", 1)
-                    value = value.strip('"')
-                    if key.lower() in required:
-                        os_element[key.lower()] = value
-        except FileNotFoundError:
-            os_element["pretty_name"] = "Linux (Unknown Distro)"
-            os_element["id"] = "linux"
-
-    elif os_element["name"] == "Windows":
-        os_element["pretty_name"] = platform.system() + " " + platform.release()
-        os_element["id"] = "windows"
-        os_element["version_codename"] = "win32"
-        os_element["home_url"] = "https://www.microsoft.com/windows"
-        os_element["support_url"] = "https://support.microsoft.com"
-        os_element["bug_report_url"] = "https://support.microsoft.com/contactus/"
-
-    # macOS
-    elif os_element["name"] == "Darwin":
-        sp = run_macos_sp("SPSoftwareDataType")  # noqa: F821
-        raw: str = sp["SPSoftwareDataType"][0]["os_version"].split()
-
-        os_element["name"] = raw[0]
-        os_element["id"] = "macos"
-        os_element["version_codename"] = "darwin"
-        os_element["version"] = raw[1]
-        os_element["version_id"] = raw[1]
-        os_element["pretty_name"] = raw[0] + " " + raw[1]
-        os_element["home_url"] = "https://www.apple.com"
-        os_element["support_url"] = "https://support.apple.com"
-        os_element["bug_report_url"] = "https://www.apple.com/feedback/macos/"
-
-    return os_element
-
-
-def get_ram_info() -> list:
-    ram_modules = []
-    if platform.system() == "Windows":
-        # Moved to WindowsManager
-        pass
-    elif platform.system() == "Linux":
-        # Moved to LinuxManager
-        pass
-
-    # macOS
-    elif platform.system() == "Darwin":
-        sp = run_macos_sp("SPMemoryDataType")  # noqa: F821
-        for i in range(len(sp["SPMemoryDataType"])):
-            raw = sp["SPMemoryDataType"][i]
-            cap_info = raw["SPMemoryDataType"].split()
-            entry = {
-                "id": str(i),
-                "class": "memory",
-                "units": cap_info[1].lower(),
-                "size": int(cap_info[0]),
-                "vendor": raw["dimm_manufacturer"],
-                "FormFactor": raw["dimm_type"],
-            }
-            ram_modules.append(entry)
-
-    return ram_modules
+            os_element["name"] = os_data[0]
+            os_element["id"] = OperatingSystem.ID.parse("macos")
+            os_element["version_codename"] = "darwin"
+            os_element["version"] = os_data[1]
+            os_element["version_id"] = os_data[1]
+            os_element["pretty_name"] = os_data[0] + " " + os_data[1]
+            os_element["home_url"] = "https://www.apple.com"
+            os_element["support_url"] = "https://support.apple.com"
+            os_element["bug_report_url"] = "https://www.apple.com/feedback/macos/"
+            return OperatingSystem(**os_element)
 
 
 if __name__ == "__main__":
