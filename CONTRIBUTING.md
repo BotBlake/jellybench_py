@@ -10,7 +10,8 @@ We have a GitHub Project to track progress. A major rewrite of the client is cur
 This is intended to prevent end users from abusing them to manipulate uploaded data.
 However, these commands can help speed up development, so they are documented here.
 
-> **Note:** All of these options only take effect when the `--debug` flag is set.
+> [!NOTE]
+> All of these options only take effect when the `--debug` flag is set.
 
 | Argument | Parameters | Description | Status |
 | --- | --- | --- | --- |
