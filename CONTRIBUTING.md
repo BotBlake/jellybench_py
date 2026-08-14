@@ -16,5 +16,5 @@ However, these commands can help speed up development, so they are documented he
 | Argument | Parameters | Description | Status |
 | --- | --- | --- | --- |
 | `--ignorehash` | None | Ignores checksum mismatches. | Active |
-| `--server` | `{Path/to/tests.json}` | Provides local tests instead of a server URL. | Currently unavailable |
+| `--server` | `{Path/to/tests.json}` | Provides local tests instead of a server URL. | Active |
 | `--override-platform` | `{Platform Name}` | Overrides the detected platform. | Active |
