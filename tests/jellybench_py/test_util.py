@@ -1,5 +1,4 @@
 import pytest
-
 from jellybench_py.util import format_time
 
 

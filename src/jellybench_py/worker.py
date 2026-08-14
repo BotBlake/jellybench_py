@@ -74,7 +74,7 @@ def run_ffmpeg(
 
 def work_man(
     worker_count: int, ffmpeg_cmd: str, passed_logger: Logger
-) -> tuple[bool, None | Any | dict[str, Any]]:
+) -> tuple[bool, Any | dict[str, Any] | None]:
     ffmpeg_log = passed_logger
     ffmpeg_cmd_list = shlex.split(ffmpeg_cmd)
     raw_worker_data = {}
