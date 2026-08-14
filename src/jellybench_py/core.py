@@ -258,7 +258,7 @@ def jelly_unpack_archive(archive_path: str, target_path: str) -> None:
     print(" success!")
 
 
-def format_gpu_arg(system_os, gpu, gpu_idx: int) -> None | str | int:
+def format_gpu_arg(system_os, gpu, gpu_idx: int) -> str | int | None:
     """
     Format the GPU argument based on the system OS and GPU information.
     Windows (at least NVIDIA) expects the GPU Index as a device selector.
@@ -940,16 +940,14 @@ def cli() -> None:
         if not os.path.exists(args.ffmpeg_path):
             ffmpeg_download = [
                 False,
-                "Provided ffmpeg path does not exist or is not accessible by the "
-                "current user.",
+                "Provided ffmpeg path does not exist or is not accessible by the current user.",
             ]
         elif os.path.isdir(args.ffmpeg_path):
             ffmpeg_download = [False, "Provided ffmpeg path is a directory"]
         elif args.ffmpeg_path.endswith((".zip", ".tar.gz", ".tar.xz")):
             ffmpeg_download = [
                 False,
-                "Provided ffmpeg path is an archive, this is unsupported during "
-                "manual override",
+                "Provided ffmpeg path is an archive, this is unsupported during manual override",
             ]
         else:
             ffmpeg_download = [True, args.ffmpeg_path]
