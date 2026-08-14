@@ -13,6 +13,7 @@ ignore = [
     "ANN401", # typing.Any not allowed
     "B028", # warn without stacklevel
     "COM812", # Trailing comma missing
+    "CPY001", # missing Copyright notice on top of file
     "D", # enforce all documentation checkers
     "DTZ", # enforce time zones in dates
     "EM", # error messages in exceptions must be assigned to a variable first
@@ -24,7 +25,6 @@ ignore = [
     "PD008", "PD009", # at/iat -> loc/iloc
     "PD010", # unstack/pivot->pivot_table
     "PD013", # stack->melt
-    "PD901", # name "df" not allowed (rule is deprecated anyway)
     "PLC0414", # useless import alias (for re-exporting)
     "PLR0913", # too many arguments (we know it, yet sometimes it is ok)
     "PT006", # pytest-parametrize-names-wrong-type (no strings in parametrize)
